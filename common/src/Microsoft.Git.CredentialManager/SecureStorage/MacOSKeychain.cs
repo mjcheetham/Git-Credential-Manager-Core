@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using static Microsoft.Git.CredentialManager.SecureStorage.NativeMethods.MacOS;
@@ -79,7 +80,7 @@ namespace Microsoft.Git.CredentialManager.SecureStorage
 
         public void AddOrUpdate(string key, ICredential credential)
         {
-            byte[] passwordBytes = Encoding.UTF8.GetBytes(credential.Password);
+            byte[] newPasswordBytes = Encoding.UTF8.GetBytes(credential.Password);
 
             IntPtr passwordData = IntPtr.Zero;
             IntPtr itemRef = IntPtr.Zero;
@@ -89,23 +90,27 @@ namespace Microsoft.Git.CredentialManager.SecureStorage
                 // Check if an entry already exists in the keychain
                 int findResult = SecKeychainFindGenericPassword(
                     IntPtr.Zero, (uint) key.Length, key, (uint) credential.UserName.Length, credential.UserName,
-                    out uint _, out passwordData, out itemRef);
+                    out uint passwordLength, out passwordData, out itemRef);
 
                 switch (findResult)
                 {
-                    // Create new entry
+                    // Update existing entry
                     case OK:
-                        ThrowIfError(
-                            SecKeychainItemModifyAttributesAndData(itemRef, IntPtr.Zero, (uint) passwordBytes.Length, passwordBytes),
-                            "Could not update existing item"
-                        );
+                        // Only update the entry if the stored password is different
+                        if (IsPasswordDifferent(newPasswordBytes, passwordData, passwordLength))
+                        {
+                            ThrowIfError(
+                                SecKeychainItemModifyAttributesAndData(itemRef, IntPtr.Zero, (uint) newPasswordBytes.Length, newPasswordBytes),
+                                "Could not update existing item"
+                            );
+                        }
                         break;
 
-                    // Update existing entry
+                    // Create new entry
                     case ErrorSecItemNotFound:
                         ThrowIfError(
                             SecKeychainAddGenericPassword(IntPtr.Zero, (uint) key.Length, key, (uint) credential.UserName.Length,
-                                credential.UserName, (uint) passwordBytes.Length, passwordBytes, out itemRef),
+                                credential.UserName, (uint) newPasswordBytes.Length, newPasswordBytes, out itemRef),
                             "Could not create new item"
                         );
                         break;
@@ -226,6 +231,12 @@ namespace Microsoft.Git.CredentialManager.SecureStorage
                     SecKeychainItemFreeAttributesAndData(attrListPtr, IntPtr.Zero);
                 }
             }
+        }
+
+        private static bool IsPasswordDifferent(byte[] newPasswordBytes, IntPtr oldPasswordData, uint oldPasswordDataLength)
+        {
+            byte[] oldPasswordBytes = NativeMethods.ToByteArray(oldPasswordData, oldPasswordDataLength);
+            return !newPasswordBytes.SequenceEqual(oldPasswordBytes);
         }
 
         #endregion
