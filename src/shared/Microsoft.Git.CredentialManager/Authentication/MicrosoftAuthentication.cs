@@ -236,8 +236,7 @@ namespace Microsoft.Git.CredentialManager.Authentication
             }
             else
             {
-                string osType = PlatformUtils.GetPlatformInformation().OperatingSystemType;
-                Context.Trace.WriteLine($"Visual Studio token cache integration is not supported on {osType}.");
+                Context.Trace.WriteLine($"Visual Studio token cache integration is not supported on non-Windows OS.");
             }
         }
 

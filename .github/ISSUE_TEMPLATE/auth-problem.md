@@ -11,7 +11,13 @@ assignees: ''
 From a terminal, run `git-credential-manager-core version` and paste the output.
 
 <!-- Ex:
-Git Credential Manager version 2.0.8-beta+e1f8492d04 (macOS, .NET Core 4.6.27129.04)
+Git Credential Manager version 2.0.24-beta+9bbe3025b3
+
+Version          : 2.0.24-beta+9bbe3025b3
+Commit ID        : 9bbe3025b3d58a54dc00816bb904ee04b836f1c8
+CPU Architecture : x86-64
+Operating System : macOS 10.14.4
+Runtime          : .NET Core 2.1
 -->
 
 **Which Git host provider are you trying to connect to?**

@@ -66,11 +66,20 @@ namespace Microsoft.Git.CredentialManager
             };
 
             // Trace the current version and program arguments
-            Context.Trace.WriteLine($"{Constants.GetProgramHeader()} '{string.Join(" ", args)}'");
+            IPlatformInformation pi = Context.PlatformInformation;
+            string appHeader = string.Format("GCM {0} ({1} {2} {3}, {4} {5})",
+                pi.ApplicationVersion,
+                pi.OperatingSystemName, pi.OperatingSystemVersion, pi.CpuArchitecture,
+                pi.RuntimeName, pi.RuntimeVersion);
+
+            string appArgs = string.Join(" ", args);
+
+            Context.Trace.WriteLine($"{appHeader} '{appArgs}'");
 
             if (args.Length == 0)
             {
                 Context.Streams.Error.WriteLine("Missing command.");
+                Context.Streams.Error.WriteLine();
                 HelpCommand.PrintUsage(Context.Streams.Error, appName);
                 return -1;
             }
@@ -100,7 +109,8 @@ namespace Microsoft.Git.CredentialManager
                 }
             }
 
-            Context.Streams.Error.WriteLine("Unrecognized command '{0}'.", args[0]);
+            Context.Streams.Error.WriteLine("'{0}' is not a recognized command.", args[0]);
+            Context.Streams.Error.WriteLine();
             HelpCommand.PrintUsage(Context.Streams.Error, appName);
             return -1;
         }

@@ -11,6 +11,7 @@ namespace Microsoft.Git.CredentialManager.Tests.Objects
         public TestTerminal Terminal { get; set; } = new TestTerminal();
         public ITrace Trace { get; set; } = new NullTrace();
         public TestFileSystem FileSystem { get; set; } = new TestFileSystem();
+        public TestPlatformInformation PlatformInformation { get; set; } = new TestPlatformInformation();
         public TestCredentialStore CredentialStore { get; set; } = new TestCredentialStore();
         public TestHttpClientFactory HttpClientFactory { get; set; } = new TestHttpClientFactory();
         public TestGit Git { get; set; } = new TestGit();
@@ -29,6 +30,8 @@ namespace Microsoft.Git.CredentialManager.Tests.Objects
         IFileSystem ICommandContext.FileSystem => FileSystem;
 
         ICredentialStore ICommandContext.CredentialStore => CredentialStore;
+
+        IPlatformInformation ICommandContext.PlatformInformation => PlatformInformation;
 
         IHttpClientFactory ICommandContext.HttpClientFactory => HttpClientFactory;
 

@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using System;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Microsoft.Git.CredentialManager.Commands
@@ -19,9 +20,18 @@ namespace Microsoft.Git.CredentialManager.Commands
 
         public override Task ExecuteAsync(ICommandContext context, string[] args)
         {
-            string appHeader = Constants.GetProgramHeader();
+            IPlatformInformation pi = context.PlatformInformation;
 
-            context.Streams.Out.WriteLine(appHeader);
+            var sb = new StringBuilder();
+            sb.AppendLine($"Git Credential Manager version {pi.ApplicationVersion}");
+            sb.AppendLine();
+            sb.AppendLine($"Version          : {pi.ApplicationVersion}");
+            sb.AppendLine($"Commit ID        : {pi.ApplicationCommit}");
+            sb.AppendLine($"CPU Architecture : {pi.CpuArchitecture}");
+            sb.AppendLine($"Operating System : {pi.OperatingSystemName} {pi.OperatingSystemVersion}");
+            sb.AppendLine($"Runtime          : {pi.RuntimeName} {pi.RuntimeVersion}");
+
+            context.Streams.Out.WriteLine(sb.ToString());
 
             return Task.CompletedTask;
         }

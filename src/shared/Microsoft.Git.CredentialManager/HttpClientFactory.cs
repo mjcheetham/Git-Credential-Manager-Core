@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 
 namespace Microsoft.Git.CredentialManager
 {
@@ -36,16 +37,19 @@ namespace Microsoft.Git.CredentialManager
         private readonly ITrace _trace;
         private readonly ISettings _settings;
         private readonly IStandardStreams _streams;
+        private readonly IPlatformInformation _platformInfo;
 
-        public HttpClientFactory(ITrace trace, ISettings settings, IStandardStreams streams)
+        public HttpClientFactory(ITrace trace, ISettings settings, IStandardStreams streams, IPlatformInformation platformInfo)
         {
             EnsureArgument.NotNull(trace, nameof(trace));
             EnsureArgument.NotNull(settings, nameof(settings));
             EnsureArgument.NotNull(streams, nameof(streams));
+            EnsureArgument.NotNull(platformInfo, nameof(platformInfo));
 
             _trace = trace;
             _settings = settings;
             _streams = streams;
+            _platformInfo = platformInfo;
         }
 
         public HttpClient CreateClient()
@@ -87,7 +91,7 @@ namespace Microsoft.Git.CredentialManager
             var client = new HttpClient(handler);
 
             // Add default headers
-            client.DefaultRequestHeaders.UserAgent.ParseAdd(Constants.GetHttpUserAgent());
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(GetUserAgentString());
             client.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue
             {
                 NoCache = true
@@ -160,6 +164,24 @@ namespace Microsoft.Git.CredentialManager
                 Query    = string.Empty,
                 Fragment = string.Empty,
             }.Uri;
+        }
+
+        private string GetUserAgentString()
+        {
+            string appVersion = _platformInfo.ApplicationVersion;
+            string osName     = _platformInfo.OperatingSystemName;
+            string osVersion  = _platformInfo.OperatingSystemVersion;
+            string cpuArch    = _platformInfo.CpuArchitecture;
+            string clrName    = _platformInfo.RuntimeName?.Replace(' ', '-');
+            string clrVersion = _platformInfo.RuntimeVersion;
+
+            var ua = new StringBuilder();
+
+            ua.AppendFormat("git-credential-manager/{0} ", appVersion);
+            ua.AppendFormat("({0} {1}; {2}) ", osName, osVersion, cpuArch);
+            ua.AppendFormat("CLR/{0}-{1}", clrName, clrVersion);
+
+            return ua.ToString();
         }
     }
 }

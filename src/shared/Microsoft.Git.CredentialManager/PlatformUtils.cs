@@ -17,19 +17,6 @@ namespace Microsoft.Git.CredentialManager
         }
 
         /// <summary>
-        /// Get information about the current platform (OS and CLR details).
-        /// </summary>
-        /// <returns>Platform information.</returns>
-        public static PlatformInformation GetPlatformInformation()
-        {
-            string osType = GetOSType();
-            string cpuArch = GetCpuArchitecture();
-            string clrVersion = GetClrVersion();
-
-            return new PlatformInformation(osType, cpuArch, clrVersion);
-        }
-
-        /// <summary>
         /// Check if the current Operating System is macOS.
         /// </summary>
         /// <returns>True if running on macOS, false otherwise.</returns>
@@ -124,73 +111,5 @@ namespace Microsoft.Git.CredentialManager
                 throw new PlatformNotSupportedException();
             }
         }
-
-        #region Platform information helper methods
-
-        private static string GetOSType()
-        {
-            if (IsWindows())
-            {
-                return "Windows";
-            }
-
-            if (IsMacOS())
-            {
-                return "macOS";
-            }
-
-            if (IsLinux())
-            {
-                return "Linux";
-            }
-
-            return "Unknown";
-        }
-
-        private static string GetCpuArchitecture()
-        {
-#if NETFRAMEWORK
-            return Environment.Is64BitOperatingSystem ? "x86-64" : "x86";
-#elif NETSTANDARD
-            switch (RuntimeInformation.OSArchitecture)
-            {
-                case Architecture.Arm:
-                    return "ARM32";
-                case Architecture.Arm64:
-                    return "ARM64";
-                case Architecture.X64:
-                    return "x86-64";
-                case Architecture.X86:
-                    return "x86";
-                default:
-                    return RuntimeInformation.OSArchitecture.ToString();
-            }
-#endif
-        }
-
-        private static string GetClrVersion()
-        {
-#if NETFRAMEWORK
-            return $".NET Framework {Environment.Version}";
-#elif NETSTANDARD
-            return RuntimeInformation.FrameworkDescription;
-#endif
-        }
-
-        #endregion
-    }
-
-    public struct PlatformInformation
-    {
-        public PlatformInformation(string osType, string cpuArch, string clrVersion)
-        {
-            OperatingSystemType = osType;
-            CpuArchitecture = cpuArch;
-            ClrVersion = clrVersion;
-        }
-
-        public readonly string OperatingSystemType;
-        public readonly string CpuArchitecture;
-        public readonly string ClrVersion;
     }
 }

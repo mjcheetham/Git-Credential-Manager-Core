@@ -79,8 +79,7 @@ namespace Microsoft.Git.CredentialManager
                 }
                 else
                 {
-                    string osType = PlatformUtils.GetPlatformInformation().OperatingSystemType;
-                    Context.Trace.WriteLine($"Skipping check for Windows Integrated Authentication on {osType}.");
+                    Context.Trace.WriteLine("Skipping check for Windows Integrated Authentication on non-Windows OS.");
                 }
             }
             else

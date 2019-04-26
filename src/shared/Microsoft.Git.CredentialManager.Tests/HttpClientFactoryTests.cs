@@ -14,19 +14,29 @@ namespace Microsoft.Git.CredentialManager.Tests
         [Fact]
         public void HttpClientFactory_GetClient_SetsDefaultHeaders()
         {
-            var factory = new HttpClientFactory(Mock.Of<ITrace>(), Mock.Of<ISettings>(), new TestStandardStreams());
+            const string expectedUserAgent = "Git-Credential-Manager/3.14159 (TestOS v99; MIPS) CLR/TestCLR-42.42";
+
+            var platformInfo = new Mock<IPlatformInformation>();
+            platformInfo.SetupGet(x => x.RuntimeName).Returns("TestCLR");
+            platformInfo.SetupGet(x => x.RuntimeVersion).Returns("42.42");
+            platformInfo.SetupGet(x => x.CpuArchitecture).Returns("MIPS");
+            platformInfo.SetupGet(x => x.ApplicationVersion).Returns("3.14159");
+            platformInfo.SetupGet(x => x.OperatingSystemName).Returns("TestOS");
+            platformInfo.SetupGet(x => x.OperatingSystemVersion).Returns( "v99");
+
+            var factory = new HttpClientFactory(Mock.Of<ITrace>(), Mock.Of<ISettings>(), new TestStandardStreams(), platformInfo.Object);
 
             HttpClient client = factory.CreateClient();
 
             Assert.NotNull(client);
-            Assert.Equal(Constants.GetHttpUserAgent(), client.DefaultRequestHeaders.UserAgent.ToString());
+            Assert.Equal(expectedUserAgent, client.DefaultRequestHeaders.UserAgent.ToString());
             Assert.True(client.DefaultRequestHeaders.CacheControl.NoCache);
         }
 
         [Fact]
         public void HttpClientFactory_GetClient_MultipleCalls_ReturnsNewInstance()
         {
-            var factory = new HttpClientFactory(Mock.Of<ITrace>(), Mock.Of<ISettings>(), new TestStandardStreams());
+            var factory = new HttpClientFactory(Mock.Of<ITrace>(), Mock.Of<ISettings>(), new TestStandardStreams(), new TestPlatformInformation());
 
             HttpClient client1 = factory.CreateClient();
             HttpClient client2 = factory.CreateClient();
@@ -46,7 +56,7 @@ namespace Microsoft.Git.CredentialManager.Tests
                 RemoteUri = repoRemoteUri,
                 RepositoryPath = repoPath
             };
-            var httpFactory = new HttpClientFactory(Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>());
+            var httpFactory = new HttpClientFactory(Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>(), new TestPlatformInformation());
 
             bool result = httpFactory.TryCreateProxy(out IWebProxy proxy);
 
@@ -70,7 +80,7 @@ namespace Microsoft.Git.CredentialManager.Tests
                 RepositoryPath = repoPath,
                 ProxyConfiguration = new Uri(proxyConfigString)
             };
-            var httpFactory = new HttpClientFactory(Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>());
+            var httpFactory = new HttpClientFactory(Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>(), new TestPlatformInformation());
 
             bool result = httpFactory.TryCreateProxy(out IWebProxy proxy);
 
@@ -102,7 +112,7 @@ namespace Microsoft.Git.CredentialManager.Tests
                 RepositoryPath = repoPath,
                 ProxyConfiguration = new Uri(proxyConfigString)
             };
-            var httpFactory = new HttpClientFactory(Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>());
+            var httpFactory = new HttpClientFactory(Mock.Of<ITrace>(), settings, Mock.Of<IStandardStreams>(), new TestPlatformInformation());
 
             bool result = httpFactory.TryCreateProxy(out IWebProxy proxy);
 

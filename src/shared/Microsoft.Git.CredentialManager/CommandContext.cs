@@ -44,6 +44,11 @@ namespace Microsoft.Git.CredentialManager
         ICredentialStore CredentialStore { get; }
 
         /// <summary>
+        /// Information about the current platform (OS and runtime).
+        /// </summary>
+        IPlatformInformation PlatformInformation { get; }
+
+        /// <summary>
         /// Factory for creating new <see cref="System.Net.Http.HttpClient"/> instances.
         /// </summary>
         IHttpClientFactory HttpClientFactory { get; }
@@ -72,17 +77,19 @@ namespace Microsoft.Git.CredentialManager
 
             if (PlatformUtils.IsWindows())
             {
-                FileSystem      = new WindowsFileSystem();
-                Environment     = new WindowsEnvironment(FileSystem);
-                Terminal        = new WindowsTerminal(Trace);
-                CredentialStore = WindowsCredentialManager.Open();
+                FileSystem          = new WindowsFileSystem();
+                Environment         = new WindowsEnvironment(FileSystem);
+                Terminal            = new WindowsTerminal(Trace);
+                CredentialStore     = WindowsCredentialManager.Open();
+                PlatformInformation = new WindowsPlatformInformation();
             }
             else if (PlatformUtils.IsPosix())
             {
                 if (PlatformUtils.IsMacOS())
                 {
-                    FileSystem      = new MacOSFileSystem();
-                    CredentialStore = MacOSKeychain.Open();
+                    FileSystem          = new MacOSFileSystem();
+                    CredentialStore     = MacOSKeychain.Open();
+                    PlatformInformation = new MacOSPlatformInformation(FileSystem);
                 }
                 else if (PlatformUtils.IsLinux())
                 {
@@ -95,7 +102,7 @@ namespace Microsoft.Git.CredentialManager
 
             string repoPath   = Git.GetRepositoryPath(FileSystem.GetCurrentDirectory());
             Settings          = new Settings(Environment, Git, repoPath);
-            HttpClientFactory = new HttpClientFactory(Trace, Settings, Streams);
+            HttpClientFactory = new HttpClientFactory(Trace, Settings, Streams, PlatformInformation);
         }
 
         #region ICommandContext
@@ -109,6 +116,8 @@ namespace Microsoft.Git.CredentialManager
         public ITrace Trace { get; }
 
         public IFileSystem FileSystem { get; }
+
+        public IPlatformInformation PlatformInformation { get; }
 
         public ICredentialStore CredentialStore { get; }
 

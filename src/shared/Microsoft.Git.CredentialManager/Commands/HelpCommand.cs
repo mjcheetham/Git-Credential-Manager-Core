@@ -3,7 +3,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Microsoft.Git.CredentialManager.Commands
@@ -32,10 +31,7 @@ namespace Microsoft.Git.CredentialManager.Commands
 
         public override Task ExecuteAsync(ICommandContext context, string[] args)
         {
-            context.Streams.Out.WriteLine(Constants.GetProgramHeader());
-
             PrintUsage(context.Streams.Out, _appName);
-
             return Task.CompletedTask;
         }
 
@@ -46,7 +42,6 @@ namespace Microsoft.Git.CredentialManager.Commands
         /// <param name="appName">Application name.</param>
         public static void PrintUsage(TextWriter writer, string appName)
         {
-            writer.WriteLine();
             writer.WriteLine("usage: {0} <command>", appName);
             writer.WriteLine();
             writer.WriteLine("  Available commands:");
