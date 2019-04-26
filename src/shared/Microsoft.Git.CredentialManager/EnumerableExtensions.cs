@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -24,6 +25,35 @@ namespace Microsoft.Git.CredentialManager
             }
 
             return result;
+        }
+
+        public static IEnumerable<(T, T)> TakePairs<T>(this IEnumerable<T> enumerable)
+        {
+            using (var enumerator = enumerable.GetEnumerator())
+            {
+                while (true)
+                {
+                    if (enumerator.MoveNext())
+                    {
+                        T first = enumerator.Current;
+
+                        if (enumerator.MoveNext())
+                        {
+                            T second = enumerator.Current;
+
+                            yield return (first, second);
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Sequence contains an odd number of elements");
+                        }
+                    }
+                    else
+                    {
+                        yield break;
+                    }
+                }
+            }
         }
     }
 }

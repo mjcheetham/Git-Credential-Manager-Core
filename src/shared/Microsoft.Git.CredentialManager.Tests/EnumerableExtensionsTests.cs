@@ -54,5 +54,24 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             Assert.Equal(expectedResult, actualResult);
         }
+
+        [Fact]
+        public void EnumerableExtensions_TakePairs_OddSequence_ThrowsException()
+        {
+            var sequence = new[] { 1, 1, 2, 4, 3, 9, 4 };
+
+            Assert.Throws<InvalidOperationException>(() => EnumerableExtensions.TakePairs(sequence).ToArray());
+        }
+
+        [Fact]
+        public void EnumerableExtensions_TakePairs_EvenSequence_TakesPairsOfElements()
+        {
+            var sequence =       new[] { 1, 1,   2, 4,   3, 9,   4, 16 };
+            var expectedZipped = new[] {(1, 1), (2, 4), (3, 9), (4, 16)};
+
+            var actualZipped = EnumerableExtensions.TakePairs(sequence);
+
+            Assert.Equal(expectedZipped, actualZipped);
+        }
     }
 }
