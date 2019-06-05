@@ -38,6 +38,12 @@ namespace Microsoft.Git.CredentialManager
         /// <param name="fileShare">File share settings.</param>
         /// <returns></returns>
         Stream OpenFileStream(string path, FileMode fileMode, FileAccess fileAccess, FileShare fileShare);
+
+        /// <summary>
+        /// Creates all directories and subdirectories in the specified path unless they already exist.
+        /// </summary>
+        /// <param name="path">The directory to create.</param>
+        void CreateDirectory(string path);
     }
 
     /// <summary>
@@ -53,5 +59,7 @@ namespace Microsoft.Git.CredentialManager
 
         public Stream OpenFileStream(string path, FileMode fileMode, FileAccess fileAccess, FileShare fileShare)
             => File.Open(path, fileMode, fileAccess, fileShare);
+
+        public void CreateDirectory(string path) => Directory.CreateDirectory(path);
     }
 }

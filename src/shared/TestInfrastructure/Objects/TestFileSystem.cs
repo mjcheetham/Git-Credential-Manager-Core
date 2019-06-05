@@ -33,7 +33,7 @@ namespace Microsoft.Git.CredentialManager.Tests.Objects
             return Files[path];
         }
 
-        public void CreateDirectory(string path)
+        void IFileSystem.CreateDirectory(string path)
         {
             Directories.Add(path);
         }

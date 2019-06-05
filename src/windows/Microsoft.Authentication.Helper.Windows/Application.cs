@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Git.CredentialManager;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
+using Microsoft.Identity.Client;
 
 namespace Microsoft.Authentication.Helper
 {
@@ -17,19 +17,6 @@ namespace Microsoft.Authentication.Helper
         {
             try
             {
-                // Listen to ADAL logs if GCM_TRACE_MSAUTH is set
-                if (Context.IsEnvironmentVariableTruthy(Constants.EnvironmentVariables.GcmTraceMsAuth, false))
-                {
-                    LoggerCallbackHandler.UseDefaultLogging = false;
-                    LoggerCallbackHandler.LogCallback = OnAdalLogMessage;
-                }
-
-                // If GCM secret tracing is enabled also enable "PII" logging in ADAL
-                if (Context.Trace.IsSecretTracingEnabled)
-                {
-                    LoggerCallbackHandler.PiiLoggingEnabled = true;
-                }
-
                 IDictionary<string, string> inputDict = await Context.StdIn.ReadDictionaryAsync(StringComparer.OrdinalIgnoreCase);
 
                 string authority   = GetArgument(inputDict, "authority");
@@ -55,9 +42,9 @@ namespace Microsoft.Authentication.Helper
             }
         }
 
-        private void OnAdalLogMessage(LogLevel level, string message, bool containspii)
+        private void OnMsalLogMessage(LogLevel level, string message, bool containspii)
         {
-            Context.Trace.WriteLine($"[{level.ToString()}] {message}", memberName: "ADAL");
+            Context.Trace.WriteLine($"[{level.ToString()}] {message}", memberName: "MSAL");
         }
 
         private static string GetArgument(IDictionary<string, string> inputDict, string name)
@@ -72,16 +59,29 @@ namespace Microsoft.Authentication.Helper
 
         protected virtual async Task<string> GetAccessTokenAsync(string authority, string clientId, Uri redirectUri, string resource)
         {
-            var cache = new VisualStudioTokenCache(Context);
-            var authContext = new AuthenticationContext(authority, cache);
+            string[] scopes = { $"{resource}/.default" };
 
-            IPlatformParameters parameters = new PlatformParameters(PromptBehavior.SelectAccount);
-            AuthenticationResult result = await authContext.AcquireTokenAsync(
-                resource,
-                clientId,
-                redirectUri,
-                parameters,
-                UserIdentifier.AnyUser);
+            var appBuilder = PublicClientApplicationBuilder.Create(clientId)
+                                                           .WithAuthority(authority);
+
+            // Listen to MSAL logs if GCM_TRACE_MSAUTH is set
+            if (Context.IsEnvironmentVariableTruthy(Constants.EnvironmentVariables.GcmTraceMsAuth, false))
+            {
+                // If GCM secret tracing is enabled also enable "PII" logging in MSAL
+                bool enablePiiLogging = Context.Trace.IsSecretTracingEnabled;
+
+                appBuilder.WithLogging(OnMsalLogMessage, null, enablePiiLogging, false);
+            }
+
+            IPublicClientApplication app = appBuilder.Build();
+
+            // Register the VS token cache
+            var cache = new VisualStudioTokenCache(Context);
+            cache.Register(app);
+
+            AuthenticationResult result = await app.AcquireTokenInteractive(scopes)
+                                                   .WithPrompt(Prompt.SelectAccount)
+                                                   .ExecuteAsync();
 
             return result.AccessToken;
         }

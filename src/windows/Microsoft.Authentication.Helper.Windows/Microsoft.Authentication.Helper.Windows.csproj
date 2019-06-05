@@ -57,7 +57,7 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="4.5.0" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\shared\Microsoft.Git.CredentialManager\Microsoft.Git.CredentialManager.csproj">
