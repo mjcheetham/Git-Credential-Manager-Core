@@ -2,11 +2,9 @@
 // Licensed under the MIT license.
 using System;
 using System.IO;
-using System.Security.Cryptography;
-using Microsoft.Git.CredentialManager;
 using Microsoft.Identity.Client;
 
-namespace Microsoft.Authentication.Helper
+namespace Microsoft.Git.CredentialManager.Authentication
 {
     /// <summary>
     /// Custom token cache which will find and use the latest installed version of Visual Studio's MSAL and/or ADAL caches.
@@ -136,7 +134,7 @@ namespace Microsoft.Authentication.Helper
             {
                 byte[] encryptedData = File.ReadAllBytes(path);
 
-                data = ProtectedData.Unprotect(encryptedData, null, DataProtectionScope.CurrentUser);
+                data = _context.Cryptography.DecryptDataForCurrentUser(encryptedData);
 
                 return true;
             }
@@ -153,7 +151,7 @@ namespace Microsoft.Authentication.Helper
                 _context.FileSystem.CreateDirectory(dirPath);
             }
 
-            byte[] encryptedData = ProtectedData.Protect(data, null, DataProtectionScope.CurrentUser);
+            byte[] encryptedData = _context.Cryptography.EncryptDataForCurrentUser(data);
 
             File.WriteAllBytes(path, encryptedData);
         }

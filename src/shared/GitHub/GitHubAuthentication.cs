@@ -3,6 +3,7 @@
 using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using Microsoft.Git.CredentialManager;
@@ -26,9 +27,9 @@ namespace GitHub
         {
             string userName, password;
 
-            if (TryFindHelperExecutablePath(out string helperPath))
+            if (ProcessHelper.TryFindHelperExecutable(Context, GitHubConstants.AuthHelperName, out string helperPath))
             {
-                IDictionary<string, string> resultDict = await InvokeHelperAsync(helperPath, "--prompt userpass", null);
+                IDictionary<string, string> resultDict = await ProcessHelper.InvokeHelperAsync(helperPath, "--prompt userpass", null);
 
                 if (!resultDict.TryGetValue("username", out userName))
                 {
@@ -54,9 +55,9 @@ namespace GitHub
         }
         public async Task<string> GetAuthenticationCodeAsync(Uri targetUri, bool isSms)
         {
-            if (TryFindHelperExecutablePath(out string helperPath))
+            if (ProcessHelper.TryFindHelperExecutable(Context, GitHubConstants.AuthHelperName, out string helperPath))
             {
-                IDictionary<string, string> resultDict = await InvokeHelperAsync(helperPath, "--prompt authcode", null);
+                IDictionary<string, string> resultDict = await ProcessHelper.InvokeHelperAsync(helperPath, "--prompt authcode", null);
 
                 if (!resultDict.TryGetValue("authcode", out string authCode))
                 {
@@ -82,33 +83,6 @@ namespace GitHub
 
                 return Context.Terminal.Prompt("Authentication code");
             }
-        }
-
-        private bool TryFindHelperExecutablePath(out string path)
-        {
-            string helperName = GitHubConstants.AuthHelperName;
-
-            if (PlatformUtils.IsWindows())
-            {
-                helperName += ".exe";
-            }
-
-            string executableDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            path = Path.Combine(executableDirectory, helperName);
-            if (!Context.FileSystem.FileExists(path))
-            {
-                Context.Trace.WriteLine($"Did not find helper '{helperName}' in '{executableDirectory}'");
-
-                // We currently only have a helper on Windows. If we failed to find the helper we should warn the user.
-                if (PlatformUtils.IsWindows())
-                {
-                    Context.StdError.WriteLine($"warning: missing '{helperName}' from installation.");
-                }
-
-                return false;
-            }
-
-            return true;
         }
     }
 }

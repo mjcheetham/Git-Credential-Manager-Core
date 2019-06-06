@@ -9,6 +9,9 @@ namespace Microsoft.AzureRepos
         // Azure DevOps's resource ID
         public const string AadResourceId = "499b84ac-1321-427f-aa17-267ca6975798";
 
+        // Azure DevOps's "v2 application" scopes
+        public static readonly string[] AadResourceScopes = { $"{AadResourceId}/.default"};
+
         // Visual Studio's client ID
         // We share this to be able to consume existing access tokens from the VS caches
         public const string AadClientId = "872cd9fa-d31f-45e0-9eab-6e460a02d1f1";

@@ -52,6 +52,16 @@ namespace Microsoft.Git.CredentialManager
         ICredentialStore CredentialStore { get; }
 
         /// <summary>
+        /// Native operating system UI.
+        /// </summary>
+        INativeUi NativeUi { get; }
+
+        /// <summary>
+        /// Cryptographic functions.
+        /// </summary>
+        ICryptography Cryptography { get; }
+
+        /// <summary>
         /// Access the environment variables for the current GCM process.
         /// </summary>
         /// <returns>Set of all current environment variables.</returns>
@@ -71,6 +81,7 @@ namespace Microsoft.Git.CredentialManager
         private TextWriter _stdOut;
         private TextWriter _stdErr;
         private ITerminal _terminal;
+        private INativeUi _nativeUi;
 
         #region ICommandContext
 
@@ -132,6 +143,13 @@ namespace Microsoft.Git.CredentialManager
 
         public ICredentialStore CredentialStore { get; } = CreateCredentialStore();
 
+        public INativeUi NativeUi
+        {
+            get { return _nativeUi ?? (_nativeUi = CreateNativeUi()); }
+        }
+
+        public ICryptography Cryptography { get; } = CreateCryptography();
+
         public IReadOnlyDictionary<string, string> GetEnvironmentVariables()
         {
             IDictionary variables = Environment.GetEnvironmentVariables();
@@ -188,6 +206,46 @@ namespace Microsoft.Git.CredentialManager
             if (PlatformUtils.IsWindows())
             {
                 return WindowsCredentialManager.Open();
+            }
+
+            if (PlatformUtils.IsLinux())
+            {
+                throw new NotImplementedException();
+            }
+
+            throw new PlatformNotSupportedException();
+        }
+
+        private INativeUi CreateNativeUi()
+        {
+            if (PlatformUtils.IsMacOS())
+            {
+                return new MacOSNativeUi(this);
+            }
+
+            if (PlatformUtils.IsWindows())
+            {
+                return new WindowsNativeUi(this);
+            }
+
+            if (PlatformUtils.IsLinux())
+            {
+                throw new NotImplementedException();
+            }
+
+            throw new PlatformNotSupportedException();
+        }
+
+        private static ICryptography CreateCryptography()
+        {
+            if (PlatformUtils.IsMacOS())
+            {
+                return new MacOSCrypto();
+            }
+
+            if (PlatformUtils.IsWindows())
+            {
+                return new WindowsCrypto();
             }
 
             if (PlatformUtils.IsLinux())

@@ -65,7 +65,7 @@ namespace Microsoft.AzureRepos
                 authAuthority,
                 AzureDevOpsConstants.AadClientId,
                 AzureDevOpsConstants.AadRedirectUri,
-                AzureDevOpsConstants.AadResourceId);
+                AzureDevOpsConstants.AadResourceScopes);
             Context.Trace.WriteLineSecrets("Acquired access token. Token='{0}'", new object[] {accessToken});
 
             // Ask the Azure DevOps instance to create a new PAT

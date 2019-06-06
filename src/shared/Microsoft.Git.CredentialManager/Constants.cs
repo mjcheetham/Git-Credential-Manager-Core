@@ -9,7 +9,7 @@ namespace Microsoft.Git.CredentialManager
     public static class Constants
     {
         public const string PersonalAccessTokenUserName = "PersonalAccessToken";
-        public const string MicrosoftAuthHelperName = "Microsoft.Authentication.Helper";
+        public const string BrowserHelperName = "Microsoft.Authentication.Helper";
 
         public static class EnvironmentVariables
         {

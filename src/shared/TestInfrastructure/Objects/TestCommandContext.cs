@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -17,6 +16,8 @@ namespace Microsoft.Git.CredentialManager.Tests.Objects
         public ITrace Trace { get; set; } = new NullTrace();
         public TestFileSystem FileSystem { get; set; } = new TestFileSystem();
         public TestCredentialStore CredentialStore { get; set; } = new TestCredentialStore();
+        public TestNativeUi NativeUi { get; set; } = new TestNativeUi();
+        public ICryptography Cryptography { get; set; } = new NullCryptography();
         public IDictionary<string, string> EnvironmentVariables { get; set; } = new Dictionary<string, string>();
         public string NewLine { get; set; } = "\n";
 
@@ -35,6 +36,10 @@ namespace Microsoft.Git.CredentialManager.Tests.Objects
         IFileSystem ICommandContext.FileSystem => FileSystem;
 
         ICredentialStore ICommandContext.CredentialStore => CredentialStore;
+
+        INativeUi ICommandContext.NativeUi => NativeUi;
+
+        ICryptography ICommandContext.Cryptography => Cryptography;
 
         IReadOnlyDictionary<string, string> ICommandContext.GetEnvironmentVariables()
             => new ReadOnlyDictionary<string, string>(EnvironmentVariables);
