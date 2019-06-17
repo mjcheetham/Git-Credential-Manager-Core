@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Microsoft.Git.CredentialManager.Interop;
 using Microsoft.Git.CredentialManager.Interop.MacOS;
 using Microsoft.Git.CredentialManager.Interop.Posix;
 using Microsoft.Git.CredentialManager.Interop.Windows;
@@ -50,6 +51,11 @@ namespace Microsoft.Git.CredentialManager
         /// Secure credential storage.
         /// </summary>
         ICredentialStore CredentialStore { get; }
+
+        /// <summary>
+        /// Git functions and information.
+        /// </summary>
+        IGit Git { get; }
 
         /// <summary>
         /// Access the environment variables for the current GCM process.
@@ -131,6 +137,8 @@ namespace Microsoft.Git.CredentialManager
         public IFileSystem FileSystem { get; } = new FileSystem();
 
         public ICredentialStore CredentialStore { get; } = CreateCredentialStore();
+
+        public IGit Git { get; } = new LibGit2();
 
         public IReadOnlyDictionary<string, string> GetEnvironmentVariables()
         {
