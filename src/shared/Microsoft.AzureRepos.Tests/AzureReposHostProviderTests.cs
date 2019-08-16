@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Git.CredentialManager;
 using Microsoft.Git.CredentialManager.Authentication;
 using Microsoft.Git.CredentialManager.Tests.Objects;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Moq;
 using Xunit;
 
@@ -149,7 +150,7 @@ namespace Microsoft.AzureRepos.Tests
             var expectedClientId = AzureDevOpsConstants.AadClientId;
             var expectedRedirectUri = AzureDevOpsConstants.AadRedirectUri;
             var expectedResource = AzureDevOpsConstants.AadResourceId;
-            var accessToken = "ACCESS-TOKEN";
+            var accessToken = CreateJwt("john.doe");
             var personalAccessToken = "PERSONAL-ACCESS-TOKEN";
 
             var context = new TestCommandContext();
@@ -191,6 +192,10 @@ namespace Microsoft.AzureRepos.Tests
 
             var azDevOpsMock = new Mock<IAzureDevOpsRestApi>();
             var msAuthMock = new Mock<IMicrosoftAuthentication>();
+            msAuthMock.Setup(x => x.GetAccessTokenAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Uri>(),
+                    It.IsAny<string>(), It.IsAny<Uri>()))
+                .ReturnsAsync(CreateJwt("john.doe"));
 
             var authorityCacheMock = new Mock<IAzureReposAuthorityCache>();
             authorityCacheMock.Setup(x => x.GetAuthority(It.IsAny<string>()))
@@ -225,6 +230,10 @@ namespace Microsoft.AzureRepos.Tests
                         .ReturnsAsync(expectedAuthority);
 
             var msAuthMock = new Mock<IMicrosoftAuthentication>();
+            msAuthMock.Setup(x => x.GetAccessTokenAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Uri>(),
+                    It.IsAny<string>(), It.IsAny<Uri>()))
+                .ReturnsAsync(CreateJwt("john.doe"));
 
             var authorityCacheMock = new Mock<IAzureReposAuthorityCache>();
             authorityCacheMock.Setup(x => x.GetAuthority(It.IsAny<string>()))
@@ -260,6 +269,14 @@ namespace Microsoft.AzureRepos.Tests
             await provider.EraseCredentialAsync(input);
 
             authorityCacheMock.Verify(x => x.EraseAuthority("org"), Times.Once);
+        }
+
+        private static JsonWebToken CreateJwt(string upn)
+        {
+            string header = @"{ 'alg': 'none' }";
+            string payload = $@"{{ 'upn': '{upn}' }}";
+
+            return new JsonWebToken(header, payload);
         }
     }
 }

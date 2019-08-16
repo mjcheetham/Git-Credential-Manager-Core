@@ -83,3 +83,6 @@ Source: "{#PayloadDir}\Microsoft.AzureRepos.dll"; DestDir: "{app}"; Flags: ignor
 Source: "{#PayloadDir}\Microsoft.Git.CredentialManager.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\Microsoft.Identity.Client.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\Microsoft.Identity.Client.Extensions.Msal.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}\Microsoft.IdentityModel.JsonWebTokens.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}\Microsoft.IdentityModel.Logging.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}\Microsoft.IdentityModel.Tokens.dll"; DestDir: "{app}"; Flags: ignoreversion
