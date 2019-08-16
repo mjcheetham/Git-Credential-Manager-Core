@@ -6,6 +6,7 @@ using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Git.CredentialManager.TextDrawing;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Client.Extensions.Msal;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -218,7 +219,30 @@ namespace Microsoft.Git.CredentialManager.Authentication
 
         private Task ShowDeviceCodeInTty(DeviceCodeResult dcr)
         {
-            Context.Terminal.WriteLine(dcr.Message);
+            var instructionMessage = $"Use a web browser to open the page '{dcr.VerificationUrl}' and enter the code below to authenticate.";
+            var instructionBox = new Box
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Content = new BoxContent(instructionMessage) { HorizontalAlignment = HorizontalAlignment.Center },
+            };
+
+            var codeBox = new Box
+            {
+                Border = BoxBorder.Thin,
+                Padding = new BoxPadding(0, 2),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Content = new BoxContent(dcr.UserCode) { HorizontalAlignment = HorizontalAlignment.Center },
+            };
+
+            const int maxWidth = 72;
+
+            var message = new StringBuilder();
+            message.AppendBox(instructionBox, maxWidth);
+            message.AppendLine();
+            message.AppendBox(codeBox, maxWidth);
+            message.AppendLine();
+
+            Context.Terminal.WriteLine(message.ToString());
 
             return Task.CompletedTask;
         }

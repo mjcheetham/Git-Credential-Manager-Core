@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
+using Microsoft.Git.CredentialManager.TextDrawing;
 
 namespace Microsoft.Git.CredentialManager
 {
@@ -72,10 +74,29 @@ namespace Microsoft.Git.CredentialManager
             if (!_settings.IsCertificateVerificationEnabled)
             {
                 _trace.WriteLine("TLS certificate verification has been disabled.");
-                _streams.Error.WriteLine("warning: ┌──────────────── SECURITY WARNING ───────────────┐");
-                _streams.Error.WriteLine("warning: │ TLS certificate verification has been disabled! │");
-                _streams.Error.WriteLine("warning: └─────────────────────────────────────────────────┘");
-                _streams.Error.WriteLine($"warning: HTTPS connections may not be secure. See {Constants.HelpUrls.GcmTlsVerification} for more information.");
+
+                string message = "SECURITY WARNING\n" +
+                                 "\n" +
+                                 "TLS certificate verification has been disabled!\n" +
+                                 "\n" +
+                                 "HTTPS connections may not be secure.\n" +
+                                 $"See {Constants.HelpUrls.GcmTlsVerification} for more information.";
+                var warningBox = new Box
+                {
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Border = BoxBorder.Thick,
+                    Padding = new BoxPadding(1, 4),
+                    Content = new BoxContent(message, HorizontalAlignment.Center)
+                };
+
+                const int maxWidth = 72;
+                const string prefix = "warning: ";
+
+                var sb = new StringBuilder();
+                sb.AppendBox(warningBox, maxWidth - prefix.Length)
+                  .InsertLinePrefix(prefix);
+
+                _streams.Error.WriteLine(sb.ToString());
 
 #if NETFRAMEWORK
                 ServicePointManager.ServerCertificateValidationCallback = (req, cert, chain, errors) => true;
