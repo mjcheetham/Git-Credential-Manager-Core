@@ -64,11 +64,7 @@ namespace GitHub
 
         public override async Task<ICredential> GenerateCredentialAsync(InputArguments input)
         {
-            // We should not allow unencrypted communication and should inform the user
-            if (StringComparer.OrdinalIgnoreCase.Equals(input.Protocol, "http"))
-            {
-                throw new Exception("Unencrypted HTTP is not supported for GitHub. Ensure the repository remote URL is using HTTPS.");
-            }
+            EnsureSecureProtocol(input);
 
             Uri targetUri = GetTargetUri(input);
 

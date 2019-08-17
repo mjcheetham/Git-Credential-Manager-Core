@@ -211,5 +211,14 @@ namespace Microsoft.Git.CredentialManager
         {
             Dispose(false);
         }
+
+        protected void EnsureSecureProtocol(InputArguments input)
+        {
+            // We should not allow unencrypted communication and should inform the user
+            if (StringComparer.OrdinalIgnoreCase.Equals(input.Protocol, "http"))
+            {
+                throw new Exception($"Unencrypted HTTP is not supported for {Name}. Ensure the repository remote URL is using HTTPS.");
+            }
+        }
     }
 }

@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using System.Diagnostics;
 using System.Reflection;
+using System.Text;
 
 namespace Microsoft.Git.CredentialManager
 {
@@ -68,6 +69,8 @@ namespace Microsoft.Git.CredentialManager
             public const string GcmHttpProxyGuide      = "https://aka.ms/gcmcore-httpproxy";
             public const string GcmTlsVerification     = "https://aka.ms/gcmcore-tlsverify";
         }
+
+        public static readonly Encoding UTF8NoBomEncoding = new UTF8Encoding(false);
 
         private static string _gcmVersion;
 

@@ -27,6 +27,19 @@ namespace Microsoft.AzureRepos
 
         public const string VssResourceTenantHeader = "X-VSS-ResourceTenant";
 
+        public static class EnvironmentVariables
+        {
+            public const string AzureReposAccessTokenMode = "GCM_AZREPOS_ACCESSTOKENMODE";
+        }
+
+        public static class GitConfiguration
+        {
+            public static class Credential
+            {
+                public const string AzureReposAccessTokenMode = "azreposAccessTokenMode";
+            }
+        }
+
         public static class PersonalAccessTokenScopes
         {
             public const string ReposWrite = "vso.code_write";

@@ -26,6 +26,23 @@ namespace Microsoft.Git.CredentialManager
         Uri RemoteUri { get; set; }
 
         /// <summary>
+        /// Try to get the value of an environment variable if it exists.
+        /// </summary>
+        /// <param name="name">Environment variable name.</param>
+        /// <param name="value">Value of the environment variable.</param>
+        /// <returns>True if the environment variable was set with a value, false otherwise.</returns>
+        bool TryGetEnvironmentValue(string name, out string value);
+
+        /// <summary>
+        /// Get all values of the specified Git configuration property for the current <see cref="RemoteUri"/> scope,
+        /// in order of precedence from most specific scope to least.
+        /// </summary>
+        /// <param name="section">Git configuration section name.</param>
+        /// <param name="property">Git configuration property name.</param>
+        /// <returns>Git configuration values in order of precedence.</returns>
+        IEnumerable<string> GetGitConfigurationValues(string section, string property);
+
+        /// <summary>
         /// True if debugging is enabled, false otherwise.
         /// </summary>
         bool IsDebuggingEnabled { get; }
@@ -109,13 +126,13 @@ namespace Microsoft.Git.CredentialManager
         public bool IsMsalTracingEnabled => _environment.GetBooleanyOrDefault(Constants.EnvironmentVariables.GcmTraceMsAuth, false);
 
         public string ProviderOverride =>
-            TryGetSetting(KnownEnvars.GcmProvider, GitCredCfg.SectionName, GitCredCfg.Provider, out string providerId) ? providerId : null;
+            this.TryGetSetting(KnownEnvars.GcmProvider, GitCredCfg.SectionName, GitCredCfg.Provider, out string providerId) ? providerId : null;
 
         public string LegacyAuthorityOverride =>
-            TryGetSetting(KnownEnvars.GcmAuthority, GitCredCfg.SectionName, GitCredCfg.Authority, out string authority) ? authority : null;
+            this.TryGetSetting(KnownEnvars.GcmAuthority, GitCredCfg.SectionName, GitCredCfg.Authority, out string authority) ? authority : null;
 
         public bool IsWindowsIntegratedAuthenticationEnabled =>
-            TryGetSetting(KnownEnvars.GcmAllowWia, GitCredCfg.SectionName, GitCredCfg.AllowWia, out string value) && value.ToBooleanyOrDefault(true);
+            this.TryGetSetting(KnownEnvars.GcmAllowWia, GitCredCfg.SectionName, GitCredCfg.AllowWia, out string value) && value.ToBooleanyOrDefault(true);
 
         public bool IsCertificateVerificationEnabled
         {
@@ -128,7 +145,7 @@ namespace Microsoft.Git.CredentialManager
                 }
 
                 // Next try the equivalent Git configuration option
-                if (TryGetSetting(null, KnownGitCfg.Http.SectionName, KnownGitCfg.Http.SslVerify, out string cfgValue))
+                if (this.TryGetSetting(null, KnownGitCfg.Http.SectionName, KnownGitCfg.Http.SslVerify, out string cfgValue))
                 {
                     return cfgValue.ToBooleanyOrDefault(true);
                 }
@@ -144,7 +161,7 @@ namespace Microsoft.Git.CredentialManager
 
             bool TryGetUriSetting(string envarName, string section, string property, out Uri uri)
             {
-                IEnumerable<string> allValues = GetSettingValues(envarName, section, property);
+                IEnumerable<string> allValues = this.GetSettingValues(envarName, section, property);
 
                 foreach (var value in allValues)
                 {
@@ -221,118 +238,136 @@ namespace Microsoft.Git.CredentialManager
             return null;
         }
 
-        /// <summary>
-        /// Try and get the value of a specified setting as specified in the environment and Git configuration,
-        /// with the environment taking precedence over Git.
-        /// </summary>
-        /// <param name="envarName">Optional environment variable name.</param>
-        /// <param name="section">Optional Git configuration section name.</param>
-        /// <param name="property">Git configuration property name. Required if <paramref name="section"/> is set, optional otherwise.</param>
-        /// <param name="value">Value of the requested setting.</param>
-        /// <returns>True if a setting value was found, false otherwise.</returns>
-        public bool TryGetSetting(string envarName, string section, string property, out string value)
+        public bool TryGetEnvironmentValue(string name, out string value)
         {
-            IEnumerable<string> allValues = GetSettingValues(envarName, section, property);
-
-            value = allValues.FirstOrDefault();
-
-            return value != null;
+            return _environment.TryGetValue(name, out value);
         }
 
+        public IEnumerable<string> GetGitConfigurationValues(string section, string property)
+        {
+            using (var config = _git.GetConfiguration(RepositoryPath))
+            {
+                string value;
+
+                if (RemoteUri != null)
+                {
+                    /*
+                     * Look for URL scoped "section" configuration entries, starting from the most specific
+                     * down to the least specific (stopping before the TLD).
+                     *
+                     * In a divergence from standard Git configuration rules, we also consider matching URL scopes
+                     * without a scheme ("protocol://").
+                     *
+                     * For each level of scope, we look for an entry with the scheme included (the default), and then
+                     * also one without it specified. This allows you to have one configuration scope for both "http" and
+                     * "https" without needing to repeat yourself, for example.
+                     *
+                     * For example, starting with "https://foo.example.com/bar/buzz" we have:
+                     *
+                     *   1a. [section "https://foo.example.com/bar/buzz"]
+                     *          property = value
+                     *
+                     *   1b. [section "foo.example.com/bar/buzz"]
+                     *          property = value
+                     *
+                     *   2a. [section "https://foo.example.com/bar"]
+                     *          property = value
+                     *
+                     *   2b. [section "foo.example.com/bar"]
+                     *          property = value
+                     *
+                     *   3a. [section "https://foo.example.com"]
+                     *          property = value
+                     *
+                     *   3b. [section "foo.example.com"]
+                     *          property = value
+                     *
+                     *   4a. [section "https://example.com"]
+                     *          property = value
+                     *
+                     *   4b. [section "example.com"]
+                     *          property = value
+                     *
+                     */
+                    foreach (string scope in RemoteUri.GetGitConfigurationScopes())
+                    {
+                        // Look for a scoped entry that includes the scheme "protocol://example.com" first as this is more specific
+                        if (config.TryGetValue(section, scope, property, out value))
+                        {
+                            yield return value;
+                        }
+
+                        // Now look for a scoped entry that omits the scheme "example.com" second as this is less specific
+                        string scopeWithoutScheme = scope.TrimUntilIndexOf(Uri.SchemeDelimiter);
+                        if (config.TryGetValue(section, scopeWithoutScheme, property, out value))
+                        {
+                            yield return value;
+                        }
+                    }
+                }
+
+                /*
+                 * Try to look for an un-scoped "section" property setting:
+                 *
+                 *    [section]
+                 *        property = value
+                 *
+                 */
+                if (config.TryGetValue(section, property, out value))
+                {
+                    yield return value;
+                }
+            }
+        }
+    }
+
+    public static class SettingsExtensions
+    {
         /// <summary>
         /// Try and get the all values of a specified setting as specified in the environment and Git configuration,
         /// in the correct order or precedence.
         /// </summary>
+        /// <param name="settings">Settings instance.</param>
         /// <param name="envarName">Optional environment variable name.</param>
         /// <param name="section">Optional Git configuration section name.</param>
         /// <param name="property">Git configuration property name. Required if <paramref name="section"/> is set, optional otherwise.</param>
         /// <returns>All values for the specified setting, in order of precedence, or an empty collection if no such values are set.</returns>
-        public IEnumerable<string> GetSettingValues(string envarName, string section, string property)
+        public static IEnumerable<string> GetSettingValues(this ISettings settings, string envarName, string section, string property)
         {
-            string value;
-
             if (envarName != null)
             {
-                if (_environment.TryGetValue(envarName, out value))
+                if (settings.TryGetEnvironmentValue(envarName, out string envarValue))
                 {
-                    yield return value;
+                    yield return envarValue;
                 }
             }
 
             if (section != null && property != null)
             {
-                using (var config = _git.GetConfiguration(RepositoryPath))
+                foreach (var gitValue in settings.GetGitConfigurationValues(section, property))
                 {
-                    if (RemoteUri != null)
-                    {
-                        /*
-                         * Look for URL scoped "section" configuration entries, starting from the most specific
-                         * down to the least specific (stopping before the TLD).
-                         *
-                         * In a divergence from standard Git configuration rules, we also consider matching URL scopes
-                         * without a scheme ("protocol://").
-                         *
-                         * For each level of scope, we look for an entry with the scheme included (the default), and then
-                         * also one without it specified. This allows you to have one configuration scope for both "http" and
-                         * "https" without needing to repeat yourself, for example.
-                         *
-                         * For example, starting with "https://foo.example.com/bar/buzz" we have:
-                         *
-                         *   1a. [section "https://foo.example.com/bar/buzz"]
-                         *          property = value
-                         *
-                         *   1b. [section "foo.example.com/bar/buzz"]
-                         *          property = value
-                         *
-                         *   2a. [section "https://foo.example.com/bar"]
-                         *          property = value
-                         *
-                         *   2b. [section "foo.example.com/bar"]
-                         *          property = value
-                         *
-                         *   3a. [section "https://foo.example.com"]
-                         *          property = value
-                         *
-                         *   3b. [section "foo.example.com"]
-                         *          property = value
-                         *
-                         *   4a. [section "https://example.com"]
-                         *          property = value
-                         *
-                         *   4b. [section "example.com"]
-                         *          property = value
-                         *
-                         */
-                        foreach (string scope in RemoteUri.GetGitConfigurationScopes())
-                        {
-                            // Look for a scoped entry that includes the scheme "protocol://example.com" first as this is more specific
-                            if (config.TryGetValue(section, scope, property, out value))
-                            {
-                                yield return value;
-                            }
-
-                            // Now look for a scoped entry that omits the scheme "example.com" second as this is less specific
-                            string scopeWithoutScheme = scope.TrimUntilIndexOf(Uri.SchemeDelimiter);
-                            if (config.TryGetValue(section, scopeWithoutScheme, property, out value))
-                            {
-                                yield return value;
-                            }
-                        }
-                    }
-
-                    /*
-                     * Try to look for an un-scoped "section" property setting:
-                     *
-                     *    [section]
-                     *        property = value
-                     *
-                     */
-                    if (config.TryGetValue(section, property, out value))
-                    {
-                        yield return value;
-                    }
+                    yield return gitValue;
                 }
             }
+        }
+
+        /// <summary>
+        /// Try and get the value of a specified setting as specified in the environment and Git configuration,
+        /// with the environment taking precedence over Git.
+        /// </summary>
+        /// <param name="settings">Settings instance.</param>
+        /// <param name="envarName">Optional environment variable name.</param>
+        /// <param name="section">Optional Git configuration section name.</param>
+        /// <param name="property">Git configuration property name. Required if <paramref name="section"/> is set, optional otherwise.</param>
+        /// <param name="value">Value of the requested setting.</param>
+        /// <returns>True if a setting value was found, false otherwise.</returns>
+        public static bool TryGetSetting(this ISettings settings, string envarName, string section, string property, out string value)
+        {
+            IEnumerable<string> allValues = settings.GetSettingValues(envarName, section, property);
+
+            value = allValues.FirstOrDefault();
+
+            return value != null;
         }
     }
 }
