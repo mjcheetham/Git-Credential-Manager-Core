@@ -162,7 +162,7 @@ namespace Microsoft.AzureRepos.Tests
                         .ReturnsAsync(personalAccessToken);
 
             var msAuthMock = new Mock<IMicrosoftAuthentication>();
-            msAuthMock.Setup(x => x.GetAccessTokenAsync(authorityUrl, expectedClientId, expectedRedirectUri, expectedResource, remoteUri))
+            msAuthMock.Setup(x => x.GetAccessTokenAsync(authorityUrl, expectedClientId, expectedRedirectUri, expectedResource, remoteUri, null))
                       .ReturnsAsync(accessToken);
 
             var authorityCache = Mock.Of<IAzureReposAuthorityCache>();
@@ -194,7 +194,7 @@ namespace Microsoft.AzureRepos.Tests
             var msAuthMock = new Mock<IMicrosoftAuthentication>();
             msAuthMock.Setup(x => x.GetAccessTokenAsync(
                     It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Uri>(),
-                    It.IsAny<string>(), It.IsAny<Uri>()))
+                    It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<string>()))
                 .ReturnsAsync(CreateJwt("john.doe"));
 
             var authorityCacheMock = new Mock<IAzureReposAuthorityCache>();
@@ -232,7 +232,7 @@ namespace Microsoft.AzureRepos.Tests
             var msAuthMock = new Mock<IMicrosoftAuthentication>();
             msAuthMock.Setup(x => x.GetAccessTokenAsync(
                     It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Uri>(),
-                    It.IsAny<string>(), It.IsAny<Uri>()))
+                    It.IsAny<string>(), It.IsAny<Uri>(), It.IsAny<string>()))
                 .ReturnsAsync(CreateJwt("john.doe"));
 
             var authorityCacheMock = new Mock<IAzureReposAuthorityCache>();

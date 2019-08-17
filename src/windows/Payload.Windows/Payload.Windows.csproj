@@ -27,8 +27,7 @@
       $(OutDir)GitHub.UI.dll;
       $(OutDir)GitHub.Authentication.Helper.exe;
       $(OutDir)Microsoft.AzureRepos.dll;
-      $(OutDir)Microsoft.Git.CredentialManager.dll;
-      $(OutDir)Microsoft.Authentication.Helper.exe;">
+      $(OutDir)Microsoft.Git.CredentialManager.dll;">
       <Authenticode>Microsoft</Authenticode>
       <InProject>false</InProject>
     </FilesToSign>
