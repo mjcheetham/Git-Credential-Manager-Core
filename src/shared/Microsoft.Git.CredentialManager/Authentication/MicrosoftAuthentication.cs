@@ -4,8 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client;
+using Microsoft.Identity.Client.Extensibility;
 using Microsoft.Identity.Client.Extensions.Msal;
 using Microsoft.IdentityModel.JsonWebTokens;
 
@@ -97,19 +99,33 @@ namespace Microsoft.Git.CredentialManager.Authentication
             // If we failed to acquire an AT silently (either because we don't have an existing user, or the user's RT has expired)
             // we need to prompt the user for credentials.
             //
+            // Depending on the current platform and session type we try to show the most appropriate authentication interface:
+            //
+            //   Windows:
+            //     Use a WinForms based 'embedded' webview UI. This is the best and natural experience.
+            //
+            //   Mac/Linux:
+            //     Use the system webview (launch the user's browser) or the device-code flows.
+            //
             // The system webview flow requires that the redirect URI is a loopback address, and that we are in an interactive session.
             //
             // The device code flow has no limitations other than a way to communicate to the user the code required to authenticate.
-            //
-            // We do not support showing an embedded webview even though MSAL supports this with the ICustomWebUi extension point.
 
             // If the user has disabled interaction all we can do is fail at this point
             ThrowIfUserInteractionDisabled();
 
             if (result is null)
             {
+                // If we're in an interactive Windows session, let MSAL show the WinForms-based embedded UI
+                if (Context.SessionManager.IsDesktopSession && PlatformUtils.IsWindows())
+                {
+                    result = await app.AcquireTokenInteractive(scopes)
+                        .WithPrompt(Prompt.SelectAccount)
+                        .WithCustomWebUi(new WinFormsWebViewUi())
+                        .ExecuteAsync();
+                }
                 // MSAL requires the application redirect URI is a loopback address to use the System WebView
-                if (Context.SessionManager.IsDesktopSession && app.IsSystemWebViewAvailable && redirectUri.IsLoopback)
+                else if (Context.SessionManager.IsDesktopSession && app.IsSystemWebViewAvailable && redirectUri.IsLoopback)
                 {
                     result = await app.AcquireTokenInteractive(scopes)
                         .WithPrompt(Prompt.SelectAccount)
@@ -254,5 +270,13 @@ namespace Microsoft.Git.CredentialManager.Authentication
         }
 
         #endregion
+    }
+
+    internal class WinFormsWebViewUi : ICustomWebUi
+    {
+        public Task<Uri> AcquireAuthorizationCodeAsync(Uri authorizationUri, Uri redirectUri, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
