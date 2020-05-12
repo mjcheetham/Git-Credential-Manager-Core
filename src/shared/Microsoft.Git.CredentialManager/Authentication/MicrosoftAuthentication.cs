@@ -97,36 +97,17 @@ namespace Microsoft.Git.CredentialManager.Authentication
             // If we failed to acquire an AT silently (either because we don't have an existing user, or the user's RT has expired)
             // we need to prompt the user for credentials.
             //
-            // Depending on the current platform and session type we try to show the most appropriate authentication interface:
-            //
-            // On .NET Framework MSAL supports the WinForms based 'embedded' webview UI. For Windows + .NET Framework this is the
-            // best and natural experience.
-            //
-            // On other runtimes (e.g., .NET Core) MSAL only supports the system webview flow (launch the user's browser),
-            // and the device-code flows.
-            //
-            //     Note: .NET Core 3 allows using WinForms when run on Windows but MSAL does not yet support this.
-            //
             // The system webview flow requires that the redirect URI is a loopback address, and that we are in an interactive session.
             //
             // The device code flow has no limitations other than a way to communicate to the user the code required to authenticate.
             //
+            // We do not support showing an embedded webview even though MSAL supports this with the ICustomWebUi extension point.
 
             // If the user has disabled interaction all we can do is fail at this point
             ThrowIfUserInteractionDisabled();
 
             if (result is null)
             {
-#if NETFRAMEWORK
-                // If we're in an interactive session and on .NET Framework, let MSAL show the WinForms-based embeded UI
-                if (Context.SessionManager.IsDesktopSession)
-                {
-                    result = await app.AcquireTokenInteractive(scopes)
-                        .WithPrompt(Prompt.SelectAccount)
-                        .WithUseEmbeddedWebView(true)
-                        .ExecuteAsync();
-                }
-#elif NETSTANDARD
                 // MSAL requires the application redirect URI is a loopback address to use the System WebView
                 if (Context.SessionManager.IsDesktopSession && app.IsSystemWebViewAvailable && redirectUri.IsLoopback)
                 {
@@ -135,7 +116,6 @@ namespace Microsoft.Git.CredentialManager.Authentication
                         .WithSystemWebViewOptions(GetSystemWebViewOptions())
                         .ExecuteAsync();
                 }
-#endif
                 // If we do not have a way to show a GUI, use device code flow over the TTY
                 else
                 {
@@ -248,7 +228,7 @@ namespace Microsoft.Git.CredentialManager.Authentication
             return Task.CompletedTask;
         }
 
-        private void OnMsalLogMessage(LogLevel level, string message, bool containspii)
+        private void OnMsalLogMessage(LogLevel level, string message, bool containPii)
         {
             Context.Trace.WriteLine($"[{level.ToString()}] {message}", memberName: "MSAL");
         }

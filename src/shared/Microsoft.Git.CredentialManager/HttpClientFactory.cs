@@ -77,11 +77,7 @@ namespace Microsoft.Git.CredentialManager
                 _streams.Error.WriteLine("warning: └─────────────────────────────────────────────────┘");
                 _streams.Error.WriteLine($"warning: HTTPS connections may not be secure. See {Constants.HelpUrls.GcmTlsVerification} for more information.");
 
-#if NETFRAMEWORK
-                ServicePointManager.ServerCertificateValidationCallback = (req, cert, chain, errors) => true;
-#elif NETSTANDARD
                 handler.ServerCertificateCustomValidationCallback = (req, cert, chain, errors) => true;
-#endif
             }
 
             var client = new HttpClient(handler);
