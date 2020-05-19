@@ -105,25 +105,28 @@ namespace Microsoft.Git.CredentialManager
         public bool TryCreateProxy(out IWebProxy proxy)
         {
             // Try to extract the proxy URI from the environment or Git config
-            if (_settings.GetProxyConfiguration(out bool isDeprecatedConfiguration) is Uri proxyConfig)
+            ProxyConfiguration proxyConfig = _settings.GetProxyConfiguration();
+            if (proxyConfig != null)
             {
                 // Inform the user if they are using a deprecated proxy configuration
-                if (isDeprecatedConfiguration)
+                if (proxyConfig.IsDeprecatedSource)
                 {
                     _trace.WriteLine("Using a deprecated proxy configuration.");
                     _streams.Error.WriteLine($"warning: Using a deprecated proxy configuration. See {Constants.HelpUrls.GcmHttpProxyGuide} for more information.");
                 }
 
                 // Strip the userinfo, query, and fragment parts of the Uri retaining only the scheme, host, port, and path.
-                Uri proxyUri = GetProxyUri(proxyConfig);
+                Uri proxyUri = GetProxyUri(proxyConfig.Uri);
 
                 // Dictionary of proxy info for tracing
                 var dict = new Dictionary<string, string> {["uri"] = proxyUri.ToString()};
 
+                WebProxy webProxy;
+
                 // Try to extract and configure proxy credentials from the configured URI
-                if (proxyConfig.TryGetUserInfo(out string userName, out string password))
+                if (proxyConfig.Uri.TryGetUserInfo(out string userName, out string password))
                 {
-                    proxy = new WebProxy(proxyUri)
+                    webProxy = new WebProxy(proxyUri)
                     {
                         Credentials = new NetworkCredential(userName, password)
                     };
@@ -134,16 +137,23 @@ namespace Microsoft.Git.CredentialManager
                 }
                 else
                 {
-                    proxy = new WebProxy(proxyUri)
+                    webProxy = new WebProxy(proxyUri)
                     {
                         UseDefaultCredentials = true
                     };
+                }
+
+                if (!string.IsNullOrWhiteSpace(proxyConfig.BypassHosts))
+                {
+                    webProxy.BypassList = proxyConfig.BypassHosts.Split(new[] {','}, StringSplitOptions.RemoveEmptyEntries);
+                    dict["bypass"] = proxyConfig.BypassHosts;
                 }
 
                 // Tracer out proxy info dictionary
                 _trace.WriteLine("Created a WebProxy instance:");
                 _trace.WriteDictionarySecrets(dict, new[] {"password"});
 
+                proxy = webProxy;
                 return true;
             }
 

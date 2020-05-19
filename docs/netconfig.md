@@ -53,7 +53,12 @@ GCM Core supports other ways of configuring a proxy for convenience and compatib
    - `HTTP_PROXY`
    - `HTTPS_PROXY`
    - `ALL_PROXY`
+   - `NO_PROXY`
 1. `GCM_HTTP_PROXY` environment variable (_**only** respected by GCM; **deprecated**_)
+
+### Proxy bypass
+
+In some instances you may want to bypass the proxy for a set of hosts. You can do this using the cURL environment variable `NO_PROXY`. Specify a comma separated list of regular expressions to match hosts that should not be proxied.
 
 ## TLS Verification
 

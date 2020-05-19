@@ -45,6 +45,7 @@ namespace Microsoft.Git.CredentialManager
             public const string CurlAllProxy       = "ALL_PROXY";
             public const string CurlHttpProxy      = "HTTP_PROXY";
             public const string CurlHttpsProxy     = "HTTPS_PROXY";
+            public const string CurlNoProxy        = "NO_PROXY";
             public const string GcmHttpProxy       = "GCM_HTTP_PROXY";
             public const string GitSslNoVerify     = "GIT_SSL_NO_VERIFY";
             public const string GcmInteractive     = "GCM_INTERACTIVE";
