@@ -11,12 +11,13 @@ namespace Microsoft.Git.CredentialManager.Tests.Objects
     {
         private readonly IEqualityComparer<string> _pathComparer;
         private readonly IEqualityComparer<string> _envarComparer;
-        private readonly string _envPathSeparator;
+
+        public string EnvPathSeparator { get; }
 
         public TestEnvironment(string envPathSeparator = null, IEqualityComparer<string> pathComparer = null, IEqualityComparer<string> envarComparer = null)
         {
             // Use the current platform separators and comparison types by default
-            _envPathSeparator = envPathSeparator ?? (PlatformUtils.IsWindows() ? ";" : ":");
+            EnvPathSeparator = envPathSeparator ?? (PlatformUtils.IsWindows() ? ";" : ":");
 
             _envarComparer = envarComparer ??
                              (PlatformUtils.IsWindows()
@@ -28,7 +29,7 @@ namespace Microsoft.Git.CredentialManager.Tests.Objects
                                 ? StringComparer.Ordinal
                                 : StringComparer.OrdinalIgnoreCase);
 
-            _envPathSeparator = envPathSeparator;
+            EnvPathSeparator = envPathSeparator;
             Variables = new Dictionary<string, string>(_envarComparer);
             WhichFiles = new Dictionary<string, ICollection<string>>(_pathComparer);
             Symlinks = new Dictionary<string, string>(_pathComparer);
@@ -40,19 +41,19 @@ namespace Microsoft.Git.CredentialManager.Tests.Objects
 
         public IDictionary<string, string> Symlinks { get; set; }
 
-        public IList<string> Path
+        public IEnumerable<string> Path
         {
             get
             {
                 if (Variables.TryGetValue("PATH", out string value))
                 {
-                    return value.Split(new[] {_envPathSeparator}, StringSplitOptions.RemoveEmptyEntries);
+                    return value.Split(new[] {EnvPathSeparator}, StringSplitOptions.RemoveEmptyEntries);
                 }
 
                 return new string[0];
             }
 
-            set => Variables["PATH"] = string.Join(_envPathSeparator, value);
+            set => Variables["PATH"] = string.Join(EnvPathSeparator, value);
         }
 
         #region IEnvironment
@@ -66,18 +67,12 @@ namespace Microsoft.Git.CredentialManager.Tests.Objects
 
         public void AddDirectoryToPath(string directoryPath, EnvironmentVariableTarget target)
         {
-            Path.Add(directoryPath);
-
-            // Update envar
-            Variables["PATH"] = string.Join(_envPathSeparator, Path);
+            Variables["PATH"] = string.Join(EnvPathSeparator, Path);
         }
 
         public void RemoveDirectoryFromPath(string directoryPath, EnvironmentVariableTarget target)
         {
-            Path.Remove(directoryPath);
-
-            // Update envar
-            Variables["PATH"] = string.Join(_envPathSeparator, Path);
+            Variables["PATH"] = string.Join(EnvPathSeparator, Path);
         }
 
         public bool TryLocateExecutable(string program, out string path)

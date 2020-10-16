@@ -252,7 +252,7 @@ namespace Microsoft.Git.CredentialManager
             }
 
             string level = GetLevelFilterArg();
-            using (Process git = _git.CreateProcess($"config {level} --replace-all {name} {value} {valueRegex}"))
+            using (Process git = _git.CreateProcess($"config {level} --replace-all {name} \"{value}\" {valueRegex}"))
             {
                 git.Start();
                 git.WaitForExit();
