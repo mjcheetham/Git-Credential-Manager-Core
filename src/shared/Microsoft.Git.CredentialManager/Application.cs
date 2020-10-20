@@ -3,6 +3,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Git.CredentialManager.Commands;
@@ -144,6 +145,7 @@ namespace Microsoft.Git.CredentialManager
         Task IConfigurableComponent.ConfigureAsync(ConfigurationTarget target)
         {
             string helperKey = $"{Constants.GitConfiguration.Credential.SectionName}.{Constants.GitConfiguration.Credential.Helper}";
+            string appPath = GetGitConfigAppPath();
 
             IGitConfiguration config;
             switch (target)
@@ -154,14 +156,14 @@ namespace Microsoft.Git.CredentialManager
                     // [credential]
                     //     ...                 # any number of helper entries (possibly none)
                     //     helper =            # an empty value to reset/clear any previous entries (if applicable)
-                    //     helper = {_appPath} # the expected executable value & directly following the empty value
+                    //     helper = {appPath} # the expected executable value & directly following the empty value
                     //     ...                 # any number of helper entries (possibly none)
                     //
                     config = Context.Git.GetConfiguration(GitConfigurationLevel.Global);
                     string[] currentValues = config.GetRegex(helperKey, Constants.RegexPatterns.Any).ToArray();
 
                     // Try to locate an existing app entry with a blank reset/clear entry immediately preceding
-                    int appIndex = Array.FindIndex(currentValues, x => Context.FileSystem.IsSamePath(x, _appPath));
+                    int appIndex = Array.FindIndex(currentValues, x => Context.FileSystem.IsSamePath(x, appPath));
                     if (appIndex > 0 && string.IsNullOrWhiteSpace(currentValues[appIndex - 1]))
                     {
                         Context.Trace.WriteLine("Credential helper user configuration is already set correctly.");
@@ -171,12 +173,12 @@ namespace Microsoft.Git.CredentialManager
                         Context.Trace.WriteLine("Updating Git credential helper user configuration...");
 
                         // Clear any existing app entries in the configuration
-                        config.UnsetAll(helperKey, Regex.Escape(_appPath));
+                        config.UnsetAll(helperKey, Regex.Escape(appPath));
 
                         // Add an empty value for `credential.helper`, which has the effect of clearing any helper value
                         // from any lower-level Git configuration, then add a second value which is the actual executable path.
                         config.ReplaceAll(helperKey, Constants.RegexPatterns.None, string.Empty);
-                        config.ReplaceAll(helperKey, Constants.RegexPatterns.None, _appPath);
+                        config.ReplaceAll(helperKey, Constants.RegexPatterns.None, appPath);
                     }
                     break;
 
@@ -184,18 +186,18 @@ namespace Microsoft.Git.CredentialManager
                     // For machine-wide configuration, we are looking for the following to be set in the system config:
                     //
                     // [credential]
-                    //     helper = {_appPath}
+                    //     helper = {appPath}
                     //
                     config = Context.Git.GetConfiguration(GitConfigurationLevel.System);
                     string currentValue = config.GetValue(helperKey);
-                    if (Context.FileSystem.IsSamePath(currentValue, _appPath))
+                    if (Context.FileSystem.IsSamePath(currentValue, appPath))
                     {
                         Context.Trace.WriteLine("Credential helper system configuration is already set correctly.");
                     }
                     else
                     {
                         Context.Trace.WriteLine("Updating Git credential helper system configuration...");
-                        config.SetValue(helperKey, _appPath);
+                        config.SetValue(helperKey, appPath);
                     }
 
                     break;
@@ -210,6 +212,7 @@ namespace Microsoft.Git.CredentialManager
         Task IConfigurableComponent.UnconfigureAsync(ConfigurationTarget target)
         {
             string helperKey = $"{Constants.GitConfiguration.Credential.SectionName}.{Constants.GitConfiguration.Credential.Helper}";
+            string appPath = GetGitConfigAppPath();
 
             IGitConfiguration config;
             switch (target)
@@ -220,17 +223,17 @@ namespace Microsoft.Git.CredentialManager
                     // [credential]
                     //     ...                 # any number of helper entries (possibly none)
                     //     helper =            # an empty value to reset/clear any previous entries (if applicable)
-                    //     helper = {_appPath} # the expected executable value & directly following the empty value
+                    //     helper = {appPath} # the expected executable value & directly following the empty value
                     //     ...                 # any number of helper entries (possibly none)
                     //
-                    // We should remove the {_appPath} entry, and any blank entries immediately preceding IFF there are no more entries following.
+                    // We should remove the {appPath} entry, and any blank entries immediately preceding IFF there are no more entries following.
                     //
                     Context.Trace.WriteLine("Removing Git credential helper user configuration...");
 
                     config = Context.Git.GetConfiguration(GitConfigurationLevel.Global);
                     string[] currentValues = config.GetRegex(helperKey, Constants.RegexPatterns.Any).ToArray();
 
-                    int appIndex = Array.FindIndex(currentValues, x => Context.FileSystem.IsSamePath(x, _appPath));
+                    int appIndex = Array.FindIndex(currentValues, x => Context.FileSystem.IsSamePath(x, appPath));
                     if (appIndex > -1)
                     {
                         // Check for the presence of a blank entry immediately preceding an app entry in the last position
@@ -242,7 +245,7 @@ namespace Microsoft.Git.CredentialManager
                         }
 
                         // Clear app entry
-                        config.UnsetAll(helperKey, Regex.Escape(_appPath));
+                        config.UnsetAll(helperKey, Regex.Escape(appPath));
                     }
                     break;
 
@@ -250,13 +253,13 @@ namespace Microsoft.Git.CredentialManager
                     // For machine-wide configuration, we are looking for the following to be set in the system config:
                     //
                     // [credential]
-                    //     helper = {_appPath}
+                    //     helper = {appPath}
                     //
-                    // We should remove the {_appPath} entry if it exists.
+                    // We should remove the {appPath} entry if it exists.
                     //
                     Context.Trace.WriteLine("Removing Git credential helper system configuration...");
                     config = Context.Git.GetConfiguration(GitConfigurationLevel.System);
-                    config.UnsetAll(helperKey, Regex.Escape(_appPath));
+                    config.UnsetAll(helperKey, Regex.Escape(appPath));
                     break;
 
                 default:
@@ -274,6 +277,21 @@ namespace Microsoft.Git.CredentialManager
             if (appName != null && appName.StartsWith(gitCredentialPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 return appName.Substring(gitCredentialPrefix.Length);
+            }
+
+            return _appPath;
+        }
+
+        private string GetGitConfigAppPath()
+        {
+            if (PlatformUtils.IsWindows())
+            {
+                // On Windows we must use UNIX style path separators and escape characters like ' ', '(', and ')'
+                return _appPath
+                    .Replace('\\', '/')
+                    .Replace(" ", "\\ ")
+                    .Replace("(", "\\(")
+                    .Replace(")", "\\)");
             }
 
             return _appPath;
