@@ -96,7 +96,7 @@ namespace Microsoft.Git.CredentialManager
             }
             else if (PlatformUtils.IsMacOS())
             {
-                FileSystem        = new MacOSFileSystem();
+                FileSystem        = new PosixFileSystem();
                 SessionManager    = new MacOSSessionManager();
                 SystemPrompts     = new MacOSSystemPrompts();
                 Environment       = new PosixEnvironment(FileSystem);
@@ -111,7 +111,7 @@ namespace Microsoft.Git.CredentialManager
             }
             else if (PlatformUtils.IsLinux())
             {
-                FileSystem        = new LinuxFileSystem();
+                FileSystem        = new PosixFileSystem();
                 // TODO: support more than just 'Posix' or X11
                 SessionManager    = new PosixSessionManager();
                 SystemPrompts     = new LinuxSystemPrompts();
