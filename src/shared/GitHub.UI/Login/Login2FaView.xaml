@@ -1,0 +1,35 @@
+﻿<UserControl x:Class="GitHub.UI.Login.Login2FaView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="clr-namespace:GitHub.UI.Controls">
+    <StackPanel>
+        <!-- <octicons:OcticonImage Icon="logo_github" Style="{DynamicResource GitHubLogo}" /> -->
+        <WrapPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,12">
+            <TextBlock Text="Two-factor authentication"
+                       Margin="0,0,12,0"/>
+        </WrapPanel>
+
+        <TextBlock Margin="30,0,30,16"
+                   HorizontalAlignment="Center"
+                   TextWrapping="Wrap"
+                   Text="{Binding Description, Mode=OneWay}"/>
+        <Button x:Name="twoFactorReadMoreLink"
+                Content="Learn more"
+                ToolTip.Tip="{Binding NavigateLearnMoreUrl}"
+                Command="{Binding NavigateLearnMoreCommand}"/>
+
+        <controls:TwoFactorInput x:Name="authenticationCode"
+                                 Text="{Binding AuthenticationCode, Mode=OneWayToSource}"/>
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Margin="0,40,0,60">
+            <Button x:Name="okButton"
+                    IsDefault="True"
+                    Content="Verify"
+                    Command="{Binding VerifyCommand}"/>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

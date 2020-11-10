@@ -1,0 +1,24 @@
+﻿<Window x:Class="Microsoft.Git.CredentialManager.UI.Controls.DialogWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
+        xmlns:viewModels="clr-namespace:Microsoft.Git.CredentialManager.UI.ViewModels"
+        Width="414"
+        Height="460"
+        MinWidth="414"
+        MinHeight="460"
+        FontFamily="Segoe UI"
+        FontSize="12"
+        FontStyle="Normal"
+        FontWeight="Normal"
+        UseLayoutRounding="True"
+        WindowStartupLocation="CenterOwner"
+        WindowState="Normal"
+        ShowInTaskbar="true"
+        d:DataContext="{d:DesignInstance viewModels:WindowViewModel}"
+        Title="{Binding Title}">
+    <Border BorderThickness="1">
+        <ContentControl x:Name="ContentHolder" Margin="30,30,30,0"/>
+    </Border>
+</Window>

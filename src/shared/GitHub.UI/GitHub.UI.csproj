@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Update="**\*.xaml.cs">
+      <DependentUpon>%(Filename)</DependentUpon>
+    </Compile>
+    <AvaloniaResource Include="**\*.xaml">
+      <SubType>Designer</SubType>
+    </AvaloniaResource>
+    <EmbeddedResource Update="GitHubResources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>GitHubResources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <Compile Update="GitHubResources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>GitHubResources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="0.9.12" />
+    <PackageReference Include="Avalonia.Desktop" Version="0.9.12" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.Git.CredentialManager.UI\Microsoft.Git.CredentialManager.UI.csproj" />
+    <ProjectReference Include="..\Microsoft.Git.CredentialManager\Microsoft.Git.CredentialManager.csproj" />
+  </ItemGroup>
+</Project>
