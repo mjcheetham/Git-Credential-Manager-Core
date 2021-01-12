@@ -258,7 +258,7 @@ namespace Microsoft.Git.CredentialManager.Authentication
             return TryFindHelperExecutablePath(
                 Constants.EnvironmentVariables.MsAuthHelper,
                 Constants.GitConfiguration.Credential.MsAuthHelper,
-                Constants.DefaultMsAuthHelper,
+                null, // No default helper
                 out path);
         }
 

@@ -100,7 +100,7 @@ namespace Microsoft.Git.CredentialManager.Authentication
                 Context.Trace.WriteLine($"UI helper override specified: '{helperName}'.");
                 isOverride = true;
             }
-            else
+            else if (!string.IsNullOrWhiteSpace(defaultValue))
             {
                 // Use the default helper if none was specified.
                 // On Windows append ".exe" for the default helpers only. If a user has specified their own

@@ -258,7 +258,7 @@ git config --global credential.msauthFlow devicecode
 
 Full path to an external 'helper' tool to which Microsoft authentication should be delegated.
 
-On macOS this defaults to the included native `Microsoft.Authentication.Helper` tool. On all other platforms this is not set.
+By default this is not set on any platform.
 
 **Note:** If a helper is set and available then all Microsoft authentication will be delegated to this helper and the [`credential.msauthFlow`](#credentialmsauthflow) setting will be ignored. Setting the value to the empty string (`""`) will unset any default helper.
 

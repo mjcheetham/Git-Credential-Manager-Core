@@ -3,40 +3,40 @@
 ## Overview
 
 ```text
-+---------------------------------------------------------------------------------------------------------------------+
-|                                                                                                                     |
-|                                              Git-Credential-Manager                                                 |
-|                                                                                                                     |
-+----------------+--------------------+--------------+--------------+-----+-----------------------+-----------------+-+
-                 |                    |              |              |     |                       |                 |
-                 | Mac                |              |              |     |               Windows |         Windows |
-                 |                    |              |              |     |                       |                 |
-                 |                    |  +-----------v-----------+  |     |      +----------------v---------------+ |
-                 |                    |  |                       |  |  Windows   |                                | |
-                 |                    |  |        GitHub         <--------+------+        GitHub.UI.Windows       | |
-                 |                    |  |                       |  |     |      |                                | |
-                 |                    |  +-+---------------------+  |     |      +-+------------------------------+ |
-                 |                    |    |                        |     |        |                                |
-                 |                    |    |  +---------------------v-+   |        | +------------------------------v-+
-                 |                    |    |  |                       |   |Windows | |                                |
-                 |                    |    |  |  Atlassian.Bitbucket  <--------------+ Atlassian.Bitbucket.UI.Windows |
-                 |                    |    |  |                       |   |        | |                                |
-                 |                    |    |  +-+---------------------+   |        | +---------------+----------------+
-                 |                    |    |    |                         |        |                 |
-+----------------v----------------+   |    |    |  +----------------------v-+      |                 |
-|                                 |   |   Mac   |  |                        |      |                 |
-| Microsoft.Authentication.Helper <----------------+  Microsoft.AzureRepos  |      |                 |
-|                                 |   |    |    |  |                        |      |                 |
-+---------------------------------+   |    |    |  +-----------+------------+      |                 |
-                                      |    |    |              |                   |                 |
-                                      |    |    |              |                   |                 |
-                                      |    |    |              |                   |                 |
-                                      |    |    |              |                   |                 |
-                                    +-v----v----v--------------v------------+    +-v-----------------v----------------+
-                                    |                                       |    |                                    |
-                                    |    Microsoft.Git.CredentialManager    <----+ Microsoft.Git.CredentialManager.UI |
-                                    |                                       |    |                                    |
-                                    +---------------------------------------+    +------------------------------------+
++----------------------------------------------------------------------------------+
+|                                                                                  |
+|           Git-Credential-Manager                                                 |
+|                                                                                  |
++--+--------------+--------------+-----+-----------------------+-----------------+-+
+   |              |              |     |                       |                 |
+   |              |              |     |               Windows |         Windows |
+   |              |              |     |                       |                 |
+   |  +-----------v-----------+  |     |      +----------------v---------------+ |
+   |  |                       |  |  Windows   |                                | |
+   |  |        GitHub         <--------+------+        GitHub.UI.Windows       | |
+   |  |                       |  |     |      |                                | |
+   |  +-+---------------------+  |     |      +-+------------------------------+ |
+   |    |                        |     |        |                                |
+   |    |  +---------------------v-+   |        | +------------------------------v-+
+   |    |  |                       |   |Windows | |                                |
+   |    |  |  Atlassian.Bitbucket  <--------------+ Atlassian.Bitbucket.UI.Windows |
+   |    |  |                       |   |        | |                                |
+   |    |  +-+---------------------+   |        | +---------------+----------------+
+   |    |    |                         |        |                 |
+   |    |    |  +----------------------v-+      |                 |
+   |    |    |  |                        |      |                 |
+   |    |    |  |  Microsoft.AzureRepos  |      |                 |
+   |    |    |  |                        |      |                 |
+   |    |    |  +-----------+------------+      |                 |
+   |    |    |              |                   |                 |
+   |    |    |              |                   |                 |
+   |    |    |              |                   |                 |
+   |    |    |              |                   |                 |
++--v----v----v--------------v------------+    +-v-----------------v----------------+
+|                                        |    |                                    |
+|     Microsoft.Git.CredentialManager    <----+ Microsoft.Git.CredentialManager.UI |
+|                                        |    |                                    |
++----------------------------------------+    +------------------------------------+
 ```
 
 Git Credential Manager Core (GCM Core) is built to be Git host and platform/OS
@@ -97,14 +97,7 @@ the future integrate with Microsoft Accounts or Azure Active Directory can make
 use of this reusable authentication component.
 
 Since MSAL.NET includes embedded GUI on Windows (when targeting .NET Framework
-only - see note above) we have no helper executable on Windows. However, on
-macOS the `MicrosoftAuthentication` component shells out to a native macOS
-helper that completely takes over all authentication flows using the older ADAL
-Objective-C library. This was done because MSAL.NET does not offer the same level
-of integration for [MDM](https://en.wikipedia.org/wiki/Mobile_device_management)
-purposes, as well as lacking an embedded UI on non-Windows platforms. As
-MSAL.NET continues to evolve we hope to replace the ADAL/macOS helper
-altogether.
+only - see note above) we have no helper executable on Windows.
 
 ## Asynchronous programming
 
