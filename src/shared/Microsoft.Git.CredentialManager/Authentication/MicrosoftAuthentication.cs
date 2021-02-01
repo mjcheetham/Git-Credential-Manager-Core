@@ -10,6 +10,10 @@ using Microsoft.Identity.Client;
 using Microsoft.Identity.Client.Extensions.Msal;
 using Microsoft.IdentityModel.JsonWebTokens;
 
+#if NETFRAMEWORK
+using Microsoft.Identity.Client.Desktop;
+#endif
+
 namespace Microsoft.Git.CredentialManager.Authentication
 {
     public interface IMicrosoftAuthentication
@@ -23,7 +27,8 @@ namespace Microsoft.Git.CredentialManager.Authentication
         Auto = 0,
         EmbeddedWebView = 1,
         SystemWebView = 2,
-        DeviceCode = 3
+        DeviceCode = 3,
+        Broker = 4,
     }
 
     public class MicrosoftAuthentication : AuthenticationBase, IMicrosoftAuthentication
@@ -57,7 +62,12 @@ namespace Microsoft.Git.CredentialManager.Authentication
         /// </summary>
         private async Task<JsonWebToken> GetAccessTokenInProcAsync(string authority, string clientId, Uri redirectUri, string[] scopes, string userName)
         {
-            IPublicClientApplication app = await CreatePublicClientApplicationAsync(authority, clientId, redirectUri);
+            // Check for a user flow preference and enable broker support if they haven't forced a non-broker flow
+            MicrosoftAuthenticationFlowType flowType = GetFlowType();
+            bool enableBroker = flowType == MicrosoftAuthenticationFlowType.Auto || flowType == MicrosoftAuthenticationFlowType.Broker;
+
+            // Create the public client application for authentication
+            IPublicClientApplication app = await CreatePublicClientApplicationAsync(authority, clientId, redirectUri, enableBroker);
 
             AuthenticationResult result = null;
 
@@ -73,6 +83,9 @@ namespace Microsoft.Git.CredentialManager.Authentication
             //
             // If the user has expressed a preference in how the want to perform the interactive authentication flows then we respect that.
             // Otherwise, depending on the current platform and session type we try to show the most appropriate authentication interface:
+            //
+            // On Windows 10 & .NET Framework, MSAL supports the Web Account Manager (WAM) broker - we try to use that if possible
+            // in the first instance.
             //
             // On .NET Framework MSAL supports the WinForms based 'embedded' webview UI. For Windows + .NET Framework this is the
             // best and natural experience.
@@ -91,11 +104,12 @@ namespace Microsoft.Git.CredentialManager.Authentication
                 // If the user has disabled interaction all we can do is fail at this point
                 ThrowIfUserInteractionDisabled();
 
-                // Check for a user flow preference
-                MicrosoftAuthenticationFlowType flowType = GetFlowType();
                 switch (flowType)
                 {
                     case MicrosoftAuthenticationFlowType.Auto:
+                        if (CanUseBroker(app, redirectUri))
+                            goto case MicrosoftAuthenticationFlowType.Broker;
+
                         if (CanUseEmbeddedWebView())
                             goto case MicrosoftAuthenticationFlowType.EmbeddedWebView;
 
@@ -104,6 +118,16 @@ namespace Microsoft.Git.CredentialManager.Authentication
 
                         // Fall back to device code flow
                         goto case MicrosoftAuthenticationFlowType.DeviceCode;
+
+                    case MicrosoftAuthenticationFlowType.Broker:
+                        Context.Trace.WriteLine("Performing interactive auth with OS broker...");
+                        EnsureCanUseBroker(app, redirectUri);
+                        result = await app.AcquireTokenInteractive(scopes)
+                            // We must configure the system webview as a fallback
+                            .WithPrompt(Prompt.SelectAccount)
+                            .WithSystemWebViewOptions(GetSystemWebViewOptions())
+                            .ExecuteAsync();
+                        break;
 
                     case MicrosoftAuthenticationFlowType.EmbeddedWebView:
                         Context.Trace.WriteLine("Performing interactive auth with embedded web view...");
@@ -152,6 +176,8 @@ namespace Microsoft.Git.CredentialManager.Authentication
                 {
                     case "auto":
                         return MicrosoftAuthenticationFlowType.Auto;
+                    case "broker":
+                        return MicrosoftAuthenticationFlowType.Broker;
                     case "embedded":
                         return MicrosoftAuthenticationFlowType.EmbeddedWebView;
                     case "system":
@@ -188,7 +214,8 @@ namespace Microsoft.Git.CredentialManager.Authentication
             }
         }
 
-        private async Task<IPublicClientApplication> CreatePublicClientApplicationAsync(string authority, string clientId, Uri redirectUri)
+        private async Task<IPublicClientApplication> CreatePublicClientApplicationAsync(
+            string authority, string clientId, Uri redirectUri, bool enableBroker)
         {
             var httpFactoryAdaptor = new MsalHttpClientFactoryAdaptor(Context.HttpClientFactory);
 
@@ -205,6 +232,15 @@ namespace Microsoft.Git.CredentialManager.Authentication
 
                 appBuilder.WithLogging(OnMsalLogMessage, LogLevel.Verbose, enablePiiLogging, false);
             }
+
+#if NETFRAMEWORK
+            // On Windows & .NET Framework try and use the WAM broker
+            if (enableBroker && PlatformUtils.IsWindows())
+            {
+                appBuilder.WithExperimentalFeatures();
+                appBuilder.WithWindowsBroker();
+            }
+#endif
 
             IPublicClientApplication app = appBuilder.Build();
 
@@ -350,6 +386,36 @@ namespace Microsoft.Git.CredentialManager.Authentication
         #endregion
 
         #region Auth flow capability detection
+
+        private bool CanUseBroker(IPublicClientApplication app, Uri redirectUri)
+        {
+            // We only support the broker on Windows 10 and .NET Framework
+#if NETFRAMEWORK
+            return Context.SessionManager.IsDesktopSession && PlatformUtils.IsWindows10() && CanUseSystemWebView(app, redirectUri);
+#else
+            return false;
+#endif
+        }
+
+        private void EnsureCanUseBroker(IPublicClientApplication app, Uri redirectUri)
+        {
+            // We only support the broker on Windows 10 and .NET Framework
+#if NETFRAMEWORK
+            if (!Context.SessionManager.IsDesktopSession)
+            {
+                throw new InvalidOperationException("Broker authentication is not available without a desktop session.");
+            }
+
+            if (!PlatformUtils.IsWindows10())
+            {
+                throw new InvalidOperationException("Broker authentication is only available on Windows 10.");
+            }
+
+            EnsureCanUseSystemWebView(app, redirectUri);
+#else
+            throw new InvalidOperationException("Broker authentication is not available on .NET Core.");
+#endif
+        }
 
         private bool CanUseEmbeddedWebView()
         {
