@@ -330,6 +330,19 @@ namespace Microsoft.AzureRepos
 
         void ICommandProvider.ConfigureCommand(Command rootCommand)
         {
+            var clearAuthCacheCmd = new Command("clear-cache", "Clear the authority cache")
+            {
+                Handler = CommandHandler.Create(ClearAuthCacheCmdAsync)
+            };
+
+            rootCommand.AddCommand(clearAuthCacheCmd);
+        }
+
+        private async Task<int> ClearAuthCacheCmdAsync()
+        {
+            _context.Streams.Out.WriteLine("Clearing Azure DevOps authority cache...");
+            await _authorityCache.ClearAsync();
+            return 0;
         }
 
         #endregion

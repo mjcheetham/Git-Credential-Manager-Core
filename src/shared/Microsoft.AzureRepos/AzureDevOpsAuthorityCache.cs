@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Git.CredentialManager;
@@ -27,6 +28,11 @@ namespace Microsoft.AzureRepos
         /// </summary>
         /// <param name="orgName">Azure DevOps organization name.</param>
         Task EraseAuthorityAsync(string orgName);
+
+        /// <summary>
+        /// Erase all cached authorities for all Azure DevOps organizations.
+        /// </summary>
+        Task ClearAsync();
     }
 
     public class AzureDevOpsAuthorityCache : IAzureDevOpsAuthorityCache
@@ -82,6 +88,21 @@ namespace Microsoft.AzureRepos
             _trace.WriteLine($"Removing cached authority for '{orgName}'...");
             await _iniStore.ReloadAsync();
             _iniStore.Remove(GetAuthorityKey(orgName));
+            await _iniStore.CommitAsync();
+        }
+
+        public async Task ClearAsync()
+        {
+            _trace.WriteLine("Removing all cached authorities...");
+
+            await _iniStore.ReloadAsync();
+
+            IEnumerable<string> orgScopes = _iniStore.GetSectionScopes("org");
+            foreach (var orgName in orgScopes)
+            {
+                _iniStore.Remove(GetAuthorityKey(orgName));
+            }
+
             await _iniStore.CommitAsync();
         }
 
