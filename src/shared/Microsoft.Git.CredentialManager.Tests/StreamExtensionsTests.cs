@@ -33,9 +33,9 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             Assert.NotNull(output);
             Assert.Equal(3, output.Count);
-            Assert.Contains(KeyValuePair.Create("a", "1"), output);
-            Assert.Contains(KeyValuePair.Create("b", "2"), output);
-            Assert.Contains(KeyValuePair.Create("c", "3"), output);
+            Assert.Contains(new KeyValuePair<string,string>("a", "1"), output);
+            Assert.Contains(new KeyValuePair<string,string>("b", "2"), output);
+            Assert.Contains(new KeyValuePair<string,string>("c", "3"), output);
         }
 
         [Fact]
@@ -47,9 +47,9 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             Assert.NotNull(output);
             Assert.Equal(3, output.Count);
-            Assert.Contains(KeyValuePair.Create("a", "1"), output);
-            Assert.Contains(KeyValuePair.Create("b", "2"), output);
-            Assert.Contains(KeyValuePair.Create("c", "3"), output);
+            Assert.Contains(new KeyValuePair<string,string>("a", "1"), output);
+            Assert.Contains(new KeyValuePair<string,string>("b", "2"), output);
+            Assert.Contains(new KeyValuePair<string,string>("c", "3"), output);
         }
 
         [Fact]
@@ -61,8 +61,8 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             Assert.NotNull(output);
             Assert.Equal(2, output.Count);
-            Assert.Contains(KeyValuePair.Create("a", "1"), output);
-            Assert.Contains(KeyValuePair.Create("A", "2"), output);
+            Assert.Contains(new KeyValuePair<string,string>("a", "1"), output);
+            Assert.Contains(new KeyValuePair<string,string>("A", "2"), output);
         }
 
         [Fact]
@@ -74,7 +74,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             Assert.NotNull(output);
             Assert.Equal(1, output.Count);
-            Assert.Contains(KeyValuePair.Create("a", "2"), output);
+            Assert.Contains(new KeyValuePair<string,string>("a", "2"), output);
         }
 
         [Fact]
@@ -86,9 +86,9 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             Assert.NotNull(output);
             Assert.Equal(3, output.Count);
-            Assert.Contains(KeyValuePair.Create("key a", "value 1"), output);
-            Assert.Contains(KeyValuePair.Create("  key b  ", " 2 "), output);
-            Assert.Contains(KeyValuePair.Create("key\tc\t", "\t3\t"), output);
+            Assert.Contains(new KeyValuePair<string,string>("key a", "value 1"), output);
+            Assert.Contains(new KeyValuePair<string,string>("  key b  ", " 2 "), output);
+            Assert.Contains(new KeyValuePair<string,string>("key\tc\t", "\t3\t"), output);
         }
 
         [Fact]
@@ -100,9 +100,9 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             Assert.NotNull(output);
             Assert.Equal(3, output.Count);
-            Assert.Contains(KeyValuePair.Create("a", "value=1"), output);
-            Assert.Contains(KeyValuePair.Create("b", "value=2"), output);
-            Assert.Contains(KeyValuePair.Create("c", "value=3"), output);
+            Assert.Contains(new KeyValuePair<string,string>("a", "value=1"), output);
+            Assert.Contains(new KeyValuePair<string,string>("b", "value=2"), output);
+            Assert.Contains(new KeyValuePair<string,string>("c", "value=3"), output);
         }
 
         [Fact]

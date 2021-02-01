@@ -512,6 +512,7 @@ namespace Microsoft.Git.CredentialManager.Tests
                 psi = new ProcessStartInfo("/usr/bin/which", "git");
             }
 
+            psi.UseShellExecute = false;
             psi.RedirectStandardOutput = true;
 
             using (var which = new Process {StartInfo = psi})
@@ -562,7 +563,8 @@ namespace Microsoft.Git.CredentialManager.Tests
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                WorkingDirectory = workingDirectory
+                WorkingDirectory = workingDirectory,
+                UseShellExecute = false
             };
 
             procInfo.Environment["GIT_DIR"] = repositoryPath;
