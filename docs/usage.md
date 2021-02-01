@@ -30,3 +30,7 @@ Read the [Git manual](https://git-scm.com/docs/gitcredentials#_custom_helpers) a
 Set your user-level Git configuration (`~/.gitconfig`) to use GCM Core. If you pass
 `--system` to these commands, they act on the system-level Git configuration
 (`/etc/gitconfig`) instead.
+
+### azure-repos
+
+Commands to interact with the Azure Repos host provider.

@@ -2,6 +2,9 @@
 // Licensed under the MIT license.
 using System;
 using System.Collections.Generic;
+using System.CommandLine;
+using System.CommandLine.Invocation;
+using System.CommandLine.Parsing;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -12,7 +15,7 @@ using KnownGitCfg = Microsoft.Git.CredentialManager.Constants.GitConfiguration;
 
 namespace Microsoft.AzureRepos
 {
-    public class AzureReposHostProvider : DisposableObject, IHostProvider, IConfigurableComponent
+    public class AzureReposHostProvider : DisposableObject, IHostProvider, IConfigurableComponent, ICommandProvider
     {
         private readonly ICommandContext _context;
         private readonly IAzureDevOpsRestApi _azDevOps;
@@ -319,6 +322,14 @@ namespace Microsoft.AzureRepos
             }
 
             return Task.CompletedTask;
+        }
+
+        #endregion
+
+        #region ICommandProvider
+
+        void ICommandProvider.ConfigureCommand(Command rootCommand)
+        {
         }
 
         #endregion
