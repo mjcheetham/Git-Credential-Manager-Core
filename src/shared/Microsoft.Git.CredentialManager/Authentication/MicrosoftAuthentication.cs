@@ -8,7 +8,6 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Client.Extensions.Msal;
-using Microsoft.IdentityModel.JsonWebTokens;
 
 #if NETFRAMEWORK
 using Microsoft.Identity.Client.Desktop;
@@ -18,8 +17,15 @@ namespace Microsoft.Git.CredentialManager.Authentication
 {
     public interface IMicrosoftAuthentication
     {
-        Task<JsonWebToken> GetAccessTokenAsync(string authority, string clientId, Uri redirectUri, string resource,
+        Task<IMicrosoftAuthenticationResult> GetTokenAsync(string authority, string clientId, Uri redirectUri, string resource,
             Uri remoteUri, string userName);
+    }
+
+    public interface IMicrosoftAuthenticationResult
+    {
+        string AccessToken { get; }
+        string AccountUpn { get; }
+        string TokenSource { get; }
     }
 
     public enum MicrosoftAuthenticationFlowType
@@ -45,12 +51,12 @@ namespace Microsoft.Git.CredentialManager.Authentication
 
         #region IMicrosoftAuthentication
 
-        public async Task<JsonWebToken> GetAccessTokenAsync(
+        public async Task<IMicrosoftAuthenticationResult> GetTokenAsync(
             string authority, string clientId, Uri redirectUri, string resource, Uri remoteUri, string userName)
         {
             // Try to acquire an access token in the current process
             string[] scopes = { $"{resource}/.default" };
-            return await GetAccessTokenInProcAsync(authority, clientId, redirectUri, scopes, userName);
+            return await GetTokenInProcAsync(authority, clientId, redirectUri, scopes, userName);
         }
 
         #endregion
@@ -60,7 +66,7 @@ namespace Microsoft.Git.CredentialManager.Authentication
         /// <summary>
         /// Obtain an access token using MSAL running inside the current process.
         /// </summary>
-        private async Task<JsonWebToken> GetAccessTokenInProcAsync(string authority, string clientId, Uri redirectUri, string[] scopes, string userName)
+        private async Task<IMicrosoftAuthenticationResult> GetTokenInProcAsync(string authority, string clientId, Uri redirectUri, string[] scopes, string userName)
         {
             // Check for a user flow preference and enable broker support if they haven't forced a non-broker flow
             MicrosoftAuthenticationFlowType flowType = GetFlowType();
@@ -160,7 +166,7 @@ namespace Microsoft.Git.CredentialManager.Authentication
                 }
             }
 
-            return new JsonWebToken(result.AccessToken);
+            return new MsalResult(result);
         }
 
         private MicrosoftAuthenticationFlowType GetFlowType()
@@ -401,5 +407,19 @@ namespace Microsoft.Git.CredentialManager.Authentication
         }
 
         #endregion
+
+        private class MsalResult : IMicrosoftAuthenticationResult
+        {
+            private readonly AuthenticationResult _msalResult;
+
+            public MsalResult(AuthenticationResult msalResult)
+            {
+                _msalResult = msalResult;
+            }
+
+            public string AccessToken => _msalResult.AccessToken;
+            public string AccountUpn => _msalResult.Account.Username;
+            public string TokenSource => _msalResult.AuthenticationResultMetadata.TokenSource.ToString();
+        }
     }
 }
