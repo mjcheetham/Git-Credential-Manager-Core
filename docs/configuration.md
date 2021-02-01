@@ -241,6 +241,7 @@ Value|Authentication Flow
 `embedded`|Show a window with embedded web view control.
 `system`|Open the user's default web browser.
 `devicecode`|Show a device code.
+`broker`|Use the operating system account manager where available.
 
 #### Example
 
