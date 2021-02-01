@@ -78,127 +78,6 @@ namespace Microsoft.AzureRepos
 
         public async Task<ICredential> GetCredentialAsync(InputArguments input)
         {
-            string service = GetServiceName(input);
-            string account = GetAccountNameForCredentialQuery(input);
-
-            _context.Trace.WriteLine($"Looking for existing credential in store with service={service} account={account}...");
-
-            ICredential credential = _context.CredentialStore.Get(service, account);
-            if (credential == null)
-            {
-                _context.Trace.WriteLine("No existing credentials found.");
-
-                // No existing credential was found, create a new one
-                _context.Trace.WriteLine("Creating new credential...");
-                credential = await GenerateCredentialAsync(input);
-                _context.Trace.WriteLine("Credential created.");
-            }
-            else
-            {
-                _context.Trace.WriteLine("Existing credential found.");
-            }
-
-            return credential;
-        }
-
-        public Task StoreCredentialAsync(InputArguments input)
-        {
-            string service = GetServiceName(input);
-
-            // We always store credentials against the given username argument for
-            // both vs.com and dev.azure.com-style URLs.
-            string account = input.UserName;
-
-            // Add or update the credential in the store.
-            _context.Trace.WriteLine($"Storing credential with service={service} account={account}...");
-            _context.CredentialStore.AddOrUpdate(service, account, input.Password);
-            _context.Trace.WriteLine("Credential was successfully stored.");
-
-            var icmp = StringComparer.OrdinalIgnoreCase;
-
-            Uri remoteUri = input.GetRemoteUri();
-            string orgName = UriHelpers.GetOrganizationName(remoteUri);
-
-            //
-            // Try and mark the user as signed-in if required.
-            //
-
-            // Look for an existing org-level user sign-in
-            string orgUser = _userManager.GetUser(orgName);
-
-            // If there is no existing organization user then sign-in to the org now and
-            // clear any remote-level sign-in that may exist
-            if (orgUser is null)
-            {
-                _userManager.SignInOrganization(orgName, account);
-                _userManager.SignOutRemote(remoteUri);
-            }
-            else
-            {
-                if (!icmp.Equals(orgUser, account))
-                {
-                    // If the organization has been signed in with a different user then explicitly with this remote URL
-                    _userManager.SignInRemote(remoteUri, account);
-                }
-                else
-                {
-                    // The org-level sign-in is correct; clear any remote-level sign-in state
-                    _userManager.SignOutRemote(remoteUri);
-                }
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public async Task EraseCredentialAsync(InputArguments input)
-        {
-            string service = GetServiceName(input);
-            string account = GetAccountNameForCredentialQuery(input);
-
-            // Try to locate an existing credential
-            _context.Trace.WriteLine($"Erasing stored credential in store with service={service} account={account}...");
-            if (_context.CredentialStore.Remove(service, account))
-            {
-                _context.Trace.WriteLine("Credential was successfully erased.");
-            }
-            else
-            {
-                _context.Trace.WriteLine("No credential was erased.");
-            }
-
-            // Clear the authority cache in case this was the reason for failure
-            Uri remoteUri = input.GetRemoteUri();
-            string orgName = UriHelpers.GetOrganizationName(remoteUri);
-            await _authorityCache.EraseAuthorityAsync(orgName);
-
-            //
-            // Try and mark the user as signed-out.
-            //
-
-            // Look for existing org-level and remote-level user sign-ins
-            string orgUser = _userManager.GetUser(orgName);
-
-            // If there is an org-level sign-in then mark the remote as explicitly 'signed-out' so that we
-            // prompt for a user the next attempt and do NOT inherit the org-level user.
-            if (orgUser != null)
-            {
-                _userManager.SignOutRemote(remoteUri, isExplicit: true);
-            }
-            else
-            {
-                // If there is no org-level sign-in then just remove any remote-level sign-in
-                _userManager.SignOutRemote(remoteUri);
-            }
-        }
-
-        protected override void ReleaseManagedResources()
-        {
-            _azDevOps.Dispose();
-            base.ReleaseManagedResources();
-        }
-
-        private async Task<ICredential> GenerateCredentialAsync(InputArguments input)
-        {
             ThrowIfDisposed();
 
             // We should not allow unencrypted communication and should inform the user
@@ -254,20 +133,79 @@ namespace Microsoft.AzureRepos
                 $"Acquired Azure access token. Account='{result.AccountUpn}' Token='{{0}}' TokenSource='{result.TokenSource}'",
                 new object[] {result.AccessToken});
 
-            // Ask the Azure DevOps instance to create a new PAT
-            var patScopes = new[]
-            {
-                AzureDevOpsConstants.PersonalAccessTokenScopes.ReposWrite,
-                AzureDevOpsConstants.PersonalAccessTokenScopes.ArtifactsRead
-            };
-            _context.Trace.WriteLine($"Creating Azure DevOps PAT with scopes '{string.Join(", ", patScopes)}'...");
-            string pat = await _azDevOps.CreatePersonalAccessTokenAsync(
-                orgUri,
-                result.AccessToken,
-                patScopes);
-            _context.Trace.WriteLineSecrets("PAT created. PAT='{0}'", new object[] {pat});
+            return new GitCredential(result.AccountUpn, result.AccessToken);
+        }
 
-            return new GitCredential(result.AccountUpn, pat);
+        public Task StoreCredentialAsync(InputArguments input)
+        {
+            string account = input.UserName;
+            var icmp = StringComparer.OrdinalIgnoreCase;
+
+            Uri remoteUri = input.GetRemoteUri();
+            string orgName = UriHelpers.GetOrganizationName(remoteUri);
+
+            //
+            // Try and mark the user as signed-in if required.
+            //
+
+            // Look for an existing org-level user sign-in
+            string orgUser = _userManager.GetUser(orgName);
+
+            // If there is no existing organization user then sign-in to the org now and
+            // clear any remote-level sign-in that may exist
+            if (orgUser is null)
+            {
+                _userManager.SignInOrganization(orgName, account);
+                _userManager.SignOutRemote(remoteUri);
+            }
+            else
+            {
+                if (!icmp.Equals(orgUser, account))
+                {
+                    // If the organization has been signed in with a different user then explicitly with this remote URL
+                    _userManager.SignInRemote(remoteUri, account);
+                }
+                else
+                {
+                    // The org-level sign-in is correct; clear any remote-level sign-in state
+                    _userManager.SignOutRemote(remoteUri);
+                }
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public async Task EraseCredentialAsync(InputArguments input)
+        {
+            // Clear the authority cache in case this was the reason for failure
+            Uri remoteUri = input.GetRemoteUri();
+            string orgName = UriHelpers.GetOrganizationName(remoteUri);
+            await _authorityCache.EraseAuthorityAsync(orgName);
+
+            //
+            // Try and mark the user as signed-out.
+            //
+
+            // Look for existing org-level and remote-level user sign-ins
+            string orgUser = _userManager.GetUser(orgName);
+
+            // If there is an org-level sign-in then mark the remote as explicitly 'signed-out' so that we
+            // prompt for a user the next attempt and do NOT inherit the org-level user.
+            if (orgUser != null)
+            {
+                _userManager.SignOutRemote(remoteUri, isExplicit: true);
+            }
+            else
+            {
+                // If there is no org-level sign-in then just remove any remote-level sign-in
+                _userManager.SignOutRemote(remoteUri);
+            }
+        }
+
+        protected override void ReleaseManagedResources()
+        {
+            _azDevOps.Dispose();
+            base.ReleaseManagedResources();
         }
 
         private string GetClientId()
@@ -296,83 +234,6 @@ namespace Microsoft.AzureRepos
             }
 
             return AzureDevOpsConstants.AadRedirectUri;
-        }
-
-        /// <remarks>
-        /// For dev.azure.com-style URLs we use the path arg to get the Azure DevOps organization name.
-        /// We ensure the presence of the path arg by setting credential.useHttpPath = true at install time.
-        ///
-        /// The result of this workaround is that we are now unable to determine if the user wanted to store
-        /// credentials with the full path or not for dev.azure.com-style URLs.
-        ///
-        /// Rather than always assume we're storing credentials against the full path, and therefore resulting
-        /// in an personal access token being created per remote URL/repository, we never store against
-        /// the full path and always store with the organization URL "dev.azure.com/org".
-        ///
-        /// For visualstudio.com-style URLs we know the AzDevOps organization name from the host arg, and
-        /// don't set the useHttpPath option. This means if we get the full path for a vs.com-style URL
-        /// we can store against the full remote path (the intended design).
-        ///
-        /// Users that need to clone a repository from Azure Repos against the full path therefore must
-        /// use the vs.com-style remote URL and not the dev.azure.com one.
-        /// </remarks>
-        private static string GetServiceName(InputArguments input)
-        {
-            if (!input.TryGetHostAndPort(out string hostName, out _))
-            {
-                throw new InvalidOperationException("Failed to parse host name and/or port");
-            }
-
-            Uri remoteUri = input.GetRemoteUri();
-
-            // dev.azure.com
-            if (UriHelpers.IsDevAzureComHost(hostName))
-            {
-                // We can never store the new dev.azure.com-style URLs against the full path because
-                // we have forced the useHttpPath option to true to in order to retrieve the AzDevOps
-                // organization name from Git.
-                return UriHelpers.CreateOrganizationUri(remoteUri, out _).AbsoluteUri.TrimEnd('/');
-            }
-
-            // *.visualstudio.com
-            if (UriHelpers.IsVisualStudioComHost(hostName))
-            {
-                // If we're given the full path for an older *.visualstudio.com-style URL then we should
-                // respect that in the service name.
-                return remoteUri.AbsoluteUri.TrimEnd('/');
-            }
-
-            throw new InvalidOperationException("Host is not Azure DevOps.");
-        }
-
-        private static string GetAccountNameForCredentialQuery(InputArguments input)
-        {
-            if (!input.TryGetHostAndPort(out string hostName, out _))
-            {
-                throw new InvalidOperationException("Failed to parse host name and/or port");
-            }
-
-            // dev.azure.com
-            if (UriHelpers.IsDevAzureComHost(hostName))
-            {
-                // We ignore the given username for dev.azure.com-style URLs because AzDevOps recommends
-                // adding the organization name as the user in the remote URL (resulting in URLs like
-                // https://org@dev.azure.com/org/foo/_git/bar) and we don't know if the given username
-                // is an actual username, or the org name.
-                // Use `null` as the account name so we match all possible credentials (regardless of
-                // the account).
-                return null;
-            }
-
-            // *.visualstudio.com
-            if (UriHelpers.IsVisualStudioComHost(hostName))
-            {
-                // If we're given a username for the vs.com-style URLs we can and should respect any
-                // specified username in the remote URL/input arguments.
-                return input.UserName;
-            }
-
-            throw new InvalidOperationException("Host is not Azure DevOps.");
         }
 
         #endregion

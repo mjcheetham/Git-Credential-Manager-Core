@@ -157,19 +157,17 @@ namespace Microsoft.AzureRepos.Tests
             var expectedRedirectUri = AzureDevOpsConstants.AadRedirectUri;
             var expectedScopes = AzureDevOpsConstants.AzureDevOpsDefaultScopes;
             var accessToken = "ACCESS-TOKEN";
-            var personalAccessToken = "PERSONAL-ACCESS-TOKEN";
-            var authResult = CreateAuthResult("john.doe", accessToken);
+            var aadUser = "john.doe";
+            var authResult = CreateAuthResult(aadUser, accessToken);
 
             var context = new TestCommandContext();
 
             var azDevOpsMock = new Mock<IAzureDevOpsRestApi>();
             azDevOpsMock.Setup(x => x.GetAuthorityAsync(expectedOrgUri))
                         .ReturnsAsync(authorityUrl);
-            azDevOpsMock.Setup(x => x.CreatePersonalAccessTokenAsync(expectedOrgUri, accessToken, It.IsAny<IEnumerable<string>>()))
-                        .ReturnsAsync(personalAccessToken);
 
             var msAuthMock = new Mock<IMicrosoftAuthentication>();
-            msAuthMock.Setup(x => x.GetTokenAsync(authorityUrl, expectedClientId, expectedRedirectUri, expectedScopes, null))
+            msAuthMock.Setup(x => x.GetTokenAsync(authorityUrl, expectedClientId, expectedRedirectUri, expectedScopes, aadUser))
                       .ReturnsAsync(authResult);
 
             var userMgr = Mock.Of<IAzureReposUserManager>();
@@ -182,8 +180,8 @@ namespace Microsoft.AzureRepos.Tests
             ICredential credential = await provider.GetCredentialAsync(input);
 
             Assert.NotNull(credential);
-            Assert.Equal(personalAccessToken, credential.Password);
-            // We don't care about the username value
+            Assert.Equal(accessToken, credential.Password);
+            Assert.Equal(aadUser, credential.Account);
         }
 
         [Fact]

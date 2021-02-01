@@ -7,7 +7,6 @@ namespace Microsoft.Git.CredentialManager
 {
     public static class Constants
     {
-        public const string PersonalAccessTokenUserName = "PersonalAccessToken";
         public const string DefaultCredentialNamespace = "git";
 
         public const string ProviderIdAuto  = "auto";

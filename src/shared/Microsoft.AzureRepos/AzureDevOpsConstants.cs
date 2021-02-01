@@ -27,12 +27,6 @@ namespace Microsoft.AzureRepos
 
         public const string VssResourceTenantHeader = "X-VSS-ResourceTenant";
 
-        public static class PersonalAccessTokenScopes
-        {
-            public const string ReposWrite = "vso.code_write";
-            public const string ArtifactsRead = "vso.packaging";
-        }
-
         public static class EnvironmentVariables
         {
             public const string DevAadClientId = "GCM_DEV_AZREPOS_CLIENTID";
