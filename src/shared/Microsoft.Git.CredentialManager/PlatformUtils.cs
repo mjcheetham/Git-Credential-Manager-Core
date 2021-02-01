@@ -28,7 +28,7 @@ namespace Microsoft.Git.CredentialManager
         {
 #if NETFRAMEWORK
             return Environment.OSVersion.Platform == PlatformID.MacOSX;
-#elif NETSTANDARD
+#else
             return RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
 #endif
         }
@@ -41,7 +41,7 @@ namespace Microsoft.Git.CredentialManager
         {
 #if NETFRAMEWORK
             return Environment.OSVersion.Platform == PlatformID.Win32NT;
-#elif NETSTANDARD
+#else
             return RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 #endif
         }
@@ -54,7 +54,7 @@ namespace Microsoft.Git.CredentialManager
         {
 #if NETFRAMEWORK
             return Environment.OSVersion.Platform == PlatformID.Unix;
-#elif NETSTANDARD
+#else
             return RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
 #endif
         }
@@ -142,7 +142,7 @@ namespace Microsoft.Git.CredentialManager
         {
 #if NETFRAMEWORK
             return Environment.Is64BitOperatingSystem ? "x86-64" : "x86";
-#elif NETSTANDARD
+#else
             switch (RuntimeInformation.OSArchitecture)
             {
                 case Architecture.Arm:
@@ -163,7 +163,7 @@ namespace Microsoft.Git.CredentialManager
         {
 #if NETFRAMEWORK
             return $".NET Framework {Environment.Version}";
-#elif NETSTANDARD
+#else
             return RuntimeInformation.FrameworkDescription;
 #endif
         }
