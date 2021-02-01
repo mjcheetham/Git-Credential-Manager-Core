@@ -250,8 +250,8 @@ namespace Microsoft.Git.CredentialManager.Authentication
 
             IPublicClientApplication app = appBuilder.Build();
 
-            // Try to register the application with the VS token cache
-            await RegisterVisualStudioTokenCacheAsync(app);
+            // Register the application token cache
+            await RegisterTokenCacheAsync(app);
 
             return app;
         }
@@ -260,17 +260,19 @@ namespace Microsoft.Git.CredentialManager.Authentication
 
         #region Helpers
 
-        private async Task RegisterVisualStudioTokenCacheAsync(IPublicClientApplication app)
+        private async Task RegisterTokenCacheAsync(IPublicClientApplication app)
         {
-            Context.Trace.WriteLine("Configuring Visual Studio token cache...");
+            Context.Trace.WriteLine("Configuring Microsoft Authentication token cache...");
 
-            // We currently only support Visual Studio on Windows
+            const string cacheFileName = "msal.cache";
+
             if (PlatformUtils.IsWindows())
             {
-                // The Visual Studio MSAL cache is located at "%LocalAppData%\.IdentityService\msal.cache" on Windows.
+                Context.Trace.WriteLine("Using token cache shared with Microsoft developer tools on Windows...");
+
+                // The shared MSAL cache is located at "%LocalAppData%\.IdentityService\msal.cache" on Windows.
                 // We use the MSAL extension library to provide us consistent cache file access semantics (synchronisation, etc)
                 // as Visual Studio itself follows, as well as other Microsoft developer tools such as the Azure PowerShell CLI.
-                const string cacheFileName = "msal.cache";
                 string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
                 string cacheDirectory = Path.Combine(appData, ".IdentityService");
 
@@ -279,12 +281,29 @@ namespace Microsoft.Git.CredentialManager.Authentication
                 var helper = await MsalCacheHelper.CreateAsync(storageProps);
                 helper.RegisterCache(app.UserTokenCache);
 
-                Context.Trace.WriteLine("Visual Studio token cache configured.");
+                Context.Trace.WriteLine("Microsoft developer tools token cache configured.");
+            }
+            else if (PlatformUtils.IsMacOS())
+            {
+                Context.Trace.WriteLine("Using token cache shared with Microsoft developer tools on macOS...");
+
+                // The shared MSAL cache is located at "~/.local/.IdentityService/msal.cache" on UNIX.
+                string cacheDirectory = Path.Combine(Context.FileSystem.UserHomePath, ".local");
+
+                var storageProps = new StorageCreationPropertiesBuilder(
+                        cacheFileName, cacheDirectory, app.AppConfig.ClientId)
+                    .WithMacKeyChain("Microsoft.Developer.IdentityService", "MSALCache")
+                    .Build();
+
+                var helper = await MsalCacheHelper.CreateAsync(storageProps);
+                helper.RegisterCache(app.UserTokenCache);
+
+                Context.Trace.WriteLine("Microsoft developer tools token cache configured.");
             }
             else
             {
                 string osType = PlatformUtils.GetPlatformInformation().OperatingSystemType;
-                Context.Trace.WriteLine($"Visual Studio token cache integration is not supported on {osType}.");
+                Context.Trace.WriteLine($"Token cache integration is not supported on {osType}.");
             }
         }
 
