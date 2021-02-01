@@ -3,6 +3,10 @@
 using System;
 using System.Runtime.InteropServices;
 
+#if NETFRAMEWORK
+using Microsoft.Win32;
+#endif
+
 namespace Microsoft.Git.CredentialManager
 {
     public static class PlatformUtils
@@ -18,6 +22,34 @@ namespace Microsoft.Git.CredentialManager
             string clrVersion = GetClrVersion();
 
             return new PlatformInformation(osType, cpuArch, clrVersion);
+        }
+
+        public static bool IsWindows10()
+        {
+            if (!IsWindows())
+            {
+                return false;
+            }
+
+
+#if NETFRAMEWORK
+            const string keyName = @"SOFTWARE\Microsoft\Windows NT\CurrentVersion";
+            RegistryKey reg = Registry.LocalMachine.OpenSubKey(keyName);
+            if (reg is null) throw new Exception($"Unable to open registry key: {keyName}");
+            string osName = (string)reg.GetValue("ProductName");
+#else
+            string osName = RuntimeInformation.OSDescription;
+#endif
+
+            var cmp = StringComparison.InvariantCultureIgnoreCase;
+            if (osName.IndexOf("Windows 10", cmp) >= 0 ||
+                osName.IndexOf("Windows Server 2016", cmp) >= 0 ||
+                osName.IndexOf("Windows Server 2019", cmp) >= 0)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
