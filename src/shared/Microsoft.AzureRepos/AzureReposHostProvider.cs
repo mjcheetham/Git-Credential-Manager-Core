@@ -300,13 +300,155 @@ namespace Microsoft.AzureRepos
                 Handler = CommandHandler.Create(ClearAuthCacheCmdAsync)
             };
 
+            var orgOpt = new Option<string>("--org", "Azure DevOps organization name");
+            var urlOpt = new Option<string>("--url", "Git remote URL");
+            var userArg = new Argument("username")
+            {
+                Arity = ArgumentArity.ExactlyOne,
+                Description = "Username or email (e.g.: alice@example.com)"
+            };
+
+            string ScopeValidator(CommandResult r)
+            {
+                var symbols = r.Children.Select(x => x.Symbol).ToArray();
+                bool hasOrg = symbols.Contains(orgOpt);
+                bool hasUrl = symbols.Contains(urlOpt);
+
+                if (hasOrg && hasUrl || !hasOrg && !hasUrl)
+                {
+                    return $"Must specify exactly one of --{orgOpt.Name} or --{urlOpt.Name}";
+                }
+
+                return null;
+            }
+
+            var listCommand = new Command("list-user", "List all assigned user accounts")
+            {
+                Handler = CommandHandler.Create(ListCmd)
+            };
+
+            var signInCommand = new Command("set-user", "Assign a user account to an Azure DevOps organization or remote")
+            {
+                Handler = CommandHandler.Create<string, string, string>(SetUserCmd)
+            };
+            signInCommand.AddOption(orgOpt);
+            signInCommand.AddOption(urlOpt);
+            signInCommand.AddValidator(ScopeValidator);
+            signInCommand.AddArgument(userArg);
+
+            var signOutCommand = new Command("unset-user", "Remove user account assignment for an Azure DevOps organization or remote")
+            {
+                Handler = CommandHandler.Create<string, string>(UnsetUserCmd)
+            };
+            signOutCommand.AddOption(orgOpt);
+            signOutCommand.AddOption(urlOpt);
+            signOutCommand.AddValidator(ScopeValidator);
+
             rootCommand.AddCommand(clearAuthCacheCmd);
+            rootCommand.AddCommand(listCommand);
+            rootCommand.AddCommand(signInCommand);
+            rootCommand.AddCommand(signOutCommand);
         }
 
         private async Task<int> ClearAuthCacheCmdAsync()
         {
             _context.Streams.Out.WriteLine("Clearing Azure DevOps authority cache...");
             await _authorityCache.ClearAsync();
+            return 0;
+        }
+
+        private int ListCmd()
+        {
+            IDictionary<string, string> orgUsers = _userManager.GetOrganizationUsers();
+            IDictionary<Uri, string> remoteUsers = _userManager.GetRemoteUsers();
+            ISet<string> orgNames = new HashSet<string>(orgUsers.Keys);
+
+            // Build a mapping of remotes to organization names so we can display sign-ins hierarchically
+            IDictionary<string, IList<Uri>> orgMap = new Dictionary<string, IList<Uri>>();
+            foreach (Uri remoteUri in remoteUsers.Keys)
+            {
+                string org = UriHelpers.GetOrganizationName(remoteUri);
+                if (!orgMap.TryGetValue(org, out var orgRemotes))
+                {
+                    orgRemotes = new List<Uri>();
+                    orgMap[org] = orgRemotes;
+                }
+                orgRemotes.Add(remoteUri);
+                orgNames.Add(org);
+            }
+
+            foreach (var org in orgNames)
+            {
+                _context.Streams.Out.WriteLine($"{org}");
+                if (orgUsers.TryGetValue(org, out string orgUser))
+                {
+                    _context.Streams.Out.WriteLine($"  * {orgUser}");
+                }
+
+                if (orgMap.TryGetValue(org, out IList<Uri> remotes))
+                {
+                    foreach (Uri remote in remotes)
+                    {
+                        if (remoteUsers.TryGetValue(remote, out string remoteUser))
+                        {
+                            _context.Streams.Out.WriteLine($"  {remote} {remoteUser}");
+                        }
+                    }
+                }
+            }
+
+            return 0;
+        }
+
+        private int SetUserCmd(string org, string url, string userName)
+        {
+            if (!string.IsNullOrWhiteSpace(org))
+            {
+                _userManager.SignInOrganization(org, userName);
+                _context.Streams.Out.WriteLine("Assigned user '{0}' to organization '{1}'.", userName, org);
+            }
+            else if (!string.IsNullOrWhiteSpace(url))
+            {
+                if (!Uri.TryCreate(url, UriKind.Absolute, out Uri remoteUri))
+                {
+                    _context.Streams.Error.WriteLine("error: invalid remote URL '{0}'", url);
+                    return -1;
+                }
+
+                _userManager.SignInRemote(remoteUri, userName);
+                _context.Streams.Out.WriteLine("Assigned user '{0}' to remote URL '{1}'.", userName, remoteUri);
+            }
+            else
+            {
+                throw new Exception("Missing organization name or remote URL");
+            }
+
+            return 0;
+        }
+
+        private int UnsetUserCmd(string org, string url)
+        {
+            if (!string.IsNullOrWhiteSpace(org))
+            {
+                _userManager.SignOutOrganization(org);
+                _context.Streams.Out.WriteLine("Cleared user assignment for organization '{0}'.", org);
+            }
+            else if (!string.IsNullOrWhiteSpace(url))
+            {
+                if (!Uri.TryCreate(url, UriKind.Absolute, out Uri remoteUri))
+                {
+                    _context.Streams.Error.WriteLine("error: invalid remote URL '{0}'", url);
+                    return -1;
+                }
+
+                _userManager.SignOutRemote(remoteUri);
+                _context.Streams.Out.WriteLine("Cleared user assignment for remote URL '{0}'.", remoteUri);
+            }
+            else
+            {
+                throw new Exception("Missing organization name or remote URL");
+            }
+
             return 0;
         }
 
