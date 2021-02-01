@@ -8,6 +8,8 @@ namespace Microsoft.AzureRepos
     {
         // Azure DevOps's resource ID
         public const string AadResourceId = "499b84ac-1321-427f-aa17-267ca6975798";
+        public const string AzReposDataDirectoryName = "azure-repos";
+        public const string AzReposDataStoreName = "store.ini";
 
         // Visual Studio's client ID
         // We share this to be able to consume existing access tokens from the VS caches
