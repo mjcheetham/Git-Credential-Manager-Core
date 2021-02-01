@@ -32,5 +32,22 @@ namespace Microsoft.AzureRepos
             public const string ReposWrite = "vso.code_write";
             public const string ArtifactsRead = "vso.packaging";
         }
+
+        public static class EnvironmentVariables
+        {
+            public const string DevAadClientId = "GCM_DEV_AZREPOS_CLIENTID";
+            public const string DevAadRedirectUri = "GCM_DEV_AZREPOS_REDIRECTURI";
+            public const string DevAadAuthorityBaseUri = "GCM_DEV_AZREPOS_AUTHORITYBASEURI";
+        }
+
+        public static class GitConfiguration
+        {
+            public static class Credential
+            {
+                public const string DevAadClientId = "azreposDevClientId";
+                public const string DevAadRedirectUri = "azreposDevRedirectUri";
+                public const string DevAadAuthorityBaseUri = "azreposDevAuthorityBaseUri";
+            }
+        }
     }
 }
