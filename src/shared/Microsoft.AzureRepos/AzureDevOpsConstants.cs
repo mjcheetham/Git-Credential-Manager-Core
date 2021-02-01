@@ -6,10 +6,14 @@ namespace Microsoft.AzureRepos
 {
     internal static class AzureDevOpsConstants
     {
-        // Azure DevOps's resource ID
-        public const string AadResourceId = "499b84ac-1321-427f-aa17-267ca6975798";
         public const string AzReposDataDirectoryName = "azure-repos";
         public const string AzReposDataStoreName = "store.ini";
+
+        // AAD environment authority base URL
+        public const string AadAuthorityBaseUrl = "https://login.microsoftonline.com";
+
+        // Azure DevOps's app ID + default scopes
+        public static readonly string[] AzureDevOpsDefaultScopes = {"499b84ac-1321-427f-aa17-267ca6975798/.default"};
 
         // Visual Studio's client ID
         // We share this to be able to consume existing access tokens from the VS caches

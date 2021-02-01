@@ -17,8 +17,8 @@ namespace Microsoft.Git.CredentialManager.Authentication
 {
     public interface IMicrosoftAuthentication
     {
-        Task<IMicrosoftAuthenticationResult> GetTokenAsync(string authority, string clientId, Uri redirectUri, string resource,
-            Uri remoteUri, string userName);
+        Task<IMicrosoftAuthenticationResult> GetTokenAsync(string authority, string clientId, Uri redirectUri,
+            string[] scopes, string userName);
     }
 
     public interface IMicrosoftAuthenticationResult
@@ -52,21 +52,7 @@ namespace Microsoft.Git.CredentialManager.Authentication
         #region IMicrosoftAuthentication
 
         public async Task<IMicrosoftAuthenticationResult> GetTokenAsync(
-            string authority, string clientId, Uri redirectUri, string resource, Uri remoteUri, string userName)
-        {
-            // Try to acquire an access token in the current process
-            string[] scopes = { $"{resource}/.default" };
-            return await GetTokenInProcAsync(authority, clientId, redirectUri, scopes, userName);
-        }
-
-        #endregion
-
-        #region Authentication strategies
-
-        /// <summary>
-        /// Obtain an access token using MSAL running inside the current process.
-        /// </summary>
-        private async Task<IMicrosoftAuthenticationResult> GetTokenInProcAsync(string authority, string clientId, Uri redirectUri, string[] scopes, string userName)
+            string authority, string clientId, Uri redirectUri, string[] scopes, string userName)
         {
             // Check for a user flow preference and enable broker support if they haven't forced a non-broker flow
             MicrosoftAuthenticationFlowType flowType = GetFlowType();
