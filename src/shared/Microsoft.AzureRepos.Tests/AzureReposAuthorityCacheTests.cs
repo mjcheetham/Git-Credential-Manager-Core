@@ -199,5 +199,29 @@ namespace Microsoft.AzureRepos.Tests
             Assert.True(store.PersistedStore.TryGetValue(otherKey, out string actualOtherAuthority));
             Assert.Equal(otherAuthority, actualOtherAuthority);
         }
+
+        [Fact]
+        public async Task AzureReposAuthorityCache_Clear_CachedAuthorities_RemovesAllAuthorities()
+        {
+            const string key1 = "org.contoso.authority";
+            const string key2 = "org.fabrikam.authority";
+            const string authority1 = "https://login.contoso.com";
+            const string authority2 = "https://login.fabrikam.com";
+
+            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [key1] = authority1,
+                [key2] = authority2
+            };
+
+            var trace = new NullTrace();
+            var store = new InMemoryIniStore(dict);
+            var cache = new AzureDevOpsAuthorityCache(trace, store);
+
+            await cache.ClearAsync();
+
+            // No entries should be left in the persisted store
+            Assert.Empty(store.PersistedStore);
+        }
     }
 }
