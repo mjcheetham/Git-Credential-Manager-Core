@@ -21,25 +21,29 @@ namespace Microsoft.AzureRepos
         private readonly IAzureDevOpsRestApi _azDevOps;
         private readonly IMicrosoftAuthentication _msAuth;
         private readonly IAzureDevOpsAuthorityCache _authorityCache;
+        private readonly IAzureReposUserManager _userManager;
 
         public AzureReposHostProvider(ICommandContext context)
             : this(context, new AzureDevOpsRestApi(context), new MicrosoftAuthentication(context),
-                new AzureDevOpsAuthorityCache(context))
+                new AzureDevOpsAuthorityCache(context), new AzureReposUserManager(context))
         {
         }
 
         public AzureReposHostProvider(ICommandContext context, IAzureDevOpsRestApi azDevOps,
-            IMicrosoftAuthentication msAuth, IAzureDevOpsAuthorityCache authorityCache)
+            IMicrosoftAuthentication msAuth, IAzureDevOpsAuthorityCache authorityCache,
+            IAzureReposUserManager userManager)
         {
             EnsureArgument.NotNull(context, nameof(context));
             EnsureArgument.NotNull(azDevOps, nameof(azDevOps));
             EnsureArgument.NotNull(msAuth, nameof(msAuth));
             EnsureArgument.NotNull(authorityCache, nameof(authorityCache));
+            EnsureArgument.NotNull(userManager, nameof(userManager));
 
             _context = context;
             _azDevOps = azDevOps;
             _msAuth = msAuth;
             _authorityCache = authorityCache;
+            _userManager = userManager;
         }
 
         #region IHostProvider
@@ -110,6 +114,39 @@ namespace Microsoft.AzureRepos
             _context.CredentialStore.AddOrUpdate(service, account, input.Password);
             _context.Trace.WriteLine("Credential was successfully stored.");
 
+            var icmp = StringComparer.OrdinalIgnoreCase;
+
+            Uri remoteUri = input.GetRemoteUri();
+            string orgName = UriHelpers.GetOrganizationName(remoteUri);
+
+            //
+            // Try and mark the user as signed-in if required.
+            //
+
+            // Look for an existing org-level user sign-in
+            string orgUser = _userManager.GetUser(orgName);
+
+            // If there is no existing organization user then sign-in to the org now and
+            // clear any remote-level sign-in that may exist
+            if (orgUser is null)
+            {
+                _userManager.SignInOrganization(orgName, account);
+                _userManager.SignOutRemote(remoteUri);
+            }
+            else
+            {
+                if (!icmp.Equals(orgUser, account))
+                {
+                    // If the organization has been signed in with a different user then explicitly with this remote URL
+                    _userManager.SignInRemote(remoteUri, account);
+                }
+                else
+                {
+                    // The org-level sign-in is correct; clear any remote-level sign-in state
+                    _userManager.SignOutRemote(remoteUri);
+                }
+            }
+
             return Task.CompletedTask;
         }
 
@@ -133,6 +170,25 @@ namespace Microsoft.AzureRepos
             Uri remoteUri = input.GetRemoteUri();
             string orgName = UriHelpers.GetOrganizationName(remoteUri);
             await _authorityCache.EraseAuthorityAsync(orgName);
+
+            //
+            // Try and mark the user as signed-out.
+            //
+
+            // Look for existing org-level and remote-level user sign-ins
+            string orgUser = _userManager.GetUser(orgName);
+
+            // If there is an org-level sign-in then mark the remote as explicitly 'signed-out' so that we
+            // prompt for a user the next attempt and do NOT inherit the org-level user.
+            if (orgUser != null)
+            {
+                _userManager.SignOutRemote(remoteUri, isExplicit: true);
+            }
+            else
+            {
+                // If there is no org-level sign-in then just remove any remote-level sign-in
+                _userManager.SignOutRemote(remoteUri);
+            }
         }
 
         protected override void ReleaseManagedResources()
@@ -166,6 +222,26 @@ namespace Microsoft.AzureRepos
             }
             _context.Trace.WriteLine($"Authority is '{authAuthority}'.");
 
+            // Get the currently 'signed in' user for this remote, if one exists
+            _context.Trace.WriteLine($"Looking up signed-in user for remote '{remoteUri}'...");
+
+            // Always prefer a remote-level user before an org-level one
+            string userName = _userManager.GetUser(remoteUri);
+            if (userName is null)
+            {
+                userName = _userManager.GetUser(orgName);
+            }
+            else if (string.IsNullOrEmpty(userName))
+            {
+                // The empty string means the remote was explicitly signed-out previously
+                // and we should not attempt to use the org-level user
+                _context.Trace.WriteLine("Remote was previously explicitly signed-out.");
+            }
+
+            _context.Trace.WriteLine(string.IsNullOrWhiteSpace(userName)
+                ? "No signed-in user found."
+                : $"Signed-in user is '{userName}'.");
+
             // Get an AAD access token for the Azure DevOps SPS
             _context.Trace.WriteLine("Getting Azure AD access token...");
             IMicrosoftAuthenticationResult result = await _msAuth.GetTokenAsync(
@@ -173,7 +249,7 @@ namespace Microsoft.AzureRepos
                 GetClientId(),
                 GetRedirectUri(),
                 AzureDevOpsConstants.AzureDevOpsDefaultScopes,
-                null);
+                userName);
             _context.Trace.WriteLineSecrets(
                 $"Acquired Azure access token. Account='{result.AccountUpn}' Token='{{0}}' TokenSource='{result.TokenSource}'",
                 new object[] {result.AccessToken});
