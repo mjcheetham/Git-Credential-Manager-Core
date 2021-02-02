@@ -18,7 +18,7 @@ namespace GitHub
 
         Task<string> GetTwoFactorCodeAsync(Uri targetUri, bool isSms);
 
-        Task<OAuth2TokenResult> GetOAuthTokenAsync(Uri targetUri, IEnumerable<string> scopes);
+        Task<OAuth2TokenResult> GetOAuthTokenAsync(Uri targetUri, IEnumerable<string> scopes, bool useDeviceCode);
     }
 
     public class AuthenticationPromptResult
@@ -42,12 +42,13 @@ namespace GitHub
     [Flags]
     public enum AuthenticationModes
     {
-        None  = 0,
-        Basic = 1,
-        OAuth = 1 << 1,
-        Pat   = 1 << 2,
+        None       = 0,
+        Basic      = 1,
+        OAuth      = 1 << 1,
+        Pat        = 1 << 2,
+        DeviceCode = 1 << 3,
 
-        All   = Basic | OAuth | Pat
+        All        = Basic | OAuth | Pat | DeviceCode
     }
 
     public class GitHubAuthentication : AuthenticationBase, IGitHubAuthentication
@@ -69,6 +70,11 @@ namespace GitHub
                 throw new ArgumentException(@$"Must specify at least one {nameof(AuthenticationModes)}", nameof(modes));
             }
 
+            if (modes == AuthenticationModes.OAuth)
+            {
+                throw new ArgumentException(@$"Authentication mode '{AuthenticationModes.OAuth}' requires an interactive/UI session.", nameof(modes));
+            }
+
             if (TryFindHelperExecutablePath(out string helperPath))
             {
                 var promptArgs = new StringBuilder("prompt");
@@ -78,9 +84,10 @@ namespace GitHub
                 }
                 else
                 {
-                    if ((modes & AuthenticationModes.Basic) != 0) promptArgs.Append(" --basic");
-                    if ((modes & AuthenticationModes.OAuth) != 0) promptArgs.Append(" --oauth");
-                    if ((modes & AuthenticationModes.Pat)   != 0) promptArgs.Append(" --pat");
+                    if ((modes & AuthenticationModes.Basic)      != 0) promptArgs.Append(" --basic");
+                    if ((modes & AuthenticationModes.DeviceCode) != 0) promptArgs.Append(" --devcode");
+                    if ((modes & AuthenticationModes.OAuth)      != 0) promptArgs.Append(" --oauth");
+                    if ((modes & AuthenticationModes.Pat)        != 0) promptArgs.Append(" --pat");
                 }
                 if (!GitHubHostProvider.IsGitHubDotCom(targetUri)) promptArgs.AppendFormat(" --enterprise-url {0}", QuoteCmdArg(targetUri.ToString()));
                 if (!string.IsNullOrWhiteSpace(userName)) promptArgs.AppendFormat(" --username {0}", QuoteCmdArg(userName));
@@ -105,6 +112,9 @@ namespace GitHub
 
                     case "oauth":
                         return new AuthenticationPromptResult(AuthenticationModes.OAuth);
+
+                    case "devcode":
+                        return new AuthenticationPromptResult(AuthenticationModes.DeviceCode);
 
                     case "basic":
                         if (!resultDict.TryGetValue("username", out userName))
@@ -150,6 +160,9 @@ namespace GitHub
                     case AuthenticationModes.OAuth:
                         return new AuthenticationPromptResult(AuthenticationModes.OAuth);
 
+                    case AuthenticationModes.DeviceCode:
+                        return new AuthenticationPromptResult(AuthenticationModes.DeviceCode);
+
                     case AuthenticationModes.Pat:
                         Context.Terminal.WriteLine("Enter GitHub personal access token for '{0}'...", targetUri);
                         string pat = Context.Terminal.PromptSecret("Token");
@@ -164,19 +177,23 @@ namespace GitHub
                         var menu = new TerminalMenu(Context.Terminal, menuTitle);
 
                         TerminalMenuItem oauthItem = null;
-                        TerminalMenuItem basicItem = null;
+                        TerminalMenuItem devCodeItem = null;
                         TerminalMenuItem patItem = null;
+                        TerminalMenuItem basicItem = null;
 
-                        if ((modes & AuthenticationModes.OAuth) != 0) oauthItem = menu.Add("Web browser");
-                        if ((modes & AuthenticationModes.Pat)   != 0) patItem   = menu.Add("Personal access token");
-                        if ((modes & AuthenticationModes.Basic) != 0) basicItem = menu.Add("Username/password");
+                        if (Context.SessionManager.IsDesktopSession && // OAuth browser flow requires a UI
+                            (modes & AuthenticationModes.OAuth)      != 0) oauthItem   = menu.Add("Web browser");
+                        if ((modes & AuthenticationModes.DeviceCode) != 0) devCodeItem = menu.Add("Device code");
+                        if ((modes & AuthenticationModes.Pat)        != 0) patItem     = menu.Add("Personal access token");
+                        if ((modes & AuthenticationModes.Basic)      != 0) basicItem   = menu.Add("Username/password");
 
                         // Default to the 'first' choice in the menu
                         TerminalMenuItem choice = menu.Show(0);
 
-                        if (choice == oauthItem) goto case AuthenticationModes.OAuth;
-                        if (choice == basicItem) goto case AuthenticationModes.Basic;
-                        if (choice == patItem)   goto case AuthenticationModes.Pat;
+                        if (choice == oauthItem)   goto case AuthenticationModes.OAuth;
+                        if (choice == devCodeItem) goto case AuthenticationModes.DeviceCode;
+                        if (choice == basicItem)   goto case AuthenticationModes.Basic;
+                        if (choice == patItem)     goto case AuthenticationModes.Pat;
 
                         throw new Exception();
                 }
@@ -217,14 +234,19 @@ namespace GitHub
             }
         }
 
-        public async Task<OAuth2TokenResult> GetOAuthTokenAsync(Uri targetUri, IEnumerable<string> scopes)
+        public async Task<OAuth2TokenResult> GetOAuthTokenAsync(Uri targetUri, IEnumerable<string> scopes, bool useDeviceCode)
         {
             ThrowIfUserInteractionDisabled();
 
             var oauthClient = new GitHubOAuth2Client(HttpClient, Context.Settings, targetUri);
 
-            // If we have a desktop session try authentication using the user's default web browser
-            if (Context.SessionManager.IsDesktopSession)
+            // If we're not using the device code flow we require an interactive/UI session
+            if (!Context.SessionManager.IsDesktopSession && !useDeviceCode)
+            {
+                throw new InvalidOperationException("Browser-based OAuth flows require an interactive/UI session.");
+            }
+
+            if (!useDeviceCode)
             {
                 var browserOptions = new OAuth2WebBrowserOptions
                 {
@@ -234,22 +256,42 @@ namespace GitHub
                 var browser = new OAuth2SystemWebBrowser(Context.Environment, browserOptions);
 
                 // Write message to the terminal (if any is attached) for some feedback that we're waiting for a web response
-                Context.Terminal.WriteLine("info: please complete authentication in your browser...");
+                Context.Terminal.WriteLine("Please complete authentication in your browser... press CTRL+C to cancel.");
 
                 OAuth2AuthorizationCodeResult authCodeResult = await oauthClient.GetAuthorizationCodeAsync(scopes, browser, CancellationToken.None);
 
                 return await oauthClient.GetTokenByAuthorizationCodeAsync(authCodeResult, CancellationToken.None);
             }
+
+            OAuth2DeviceCodeResult deviceCodeResult = await oauthClient.GetDeviceCodeAsync(scopes, CancellationToken.None);
+
+            if (Context.SessionManager.IsDesktopSession && TryFindHelperExecutablePath(out string helperPath))
+            {
+                var promptArgs = new StringBuilder("devcode");
+                promptArgs.AppendFormat(" --code {0}", QuoteCmdArg(deviceCodeResult.UserCode));
+                promptArgs.AppendFormat(" --url {0}", QuoteCmdArg(deviceCodeResult.VerificationUri.ToString()));
+
+                // Show the code but don't wait for the dialog to be closed.
+                // If the dialog is closed then cancel the GetToken operation.
+                var cts = new CancellationTokenSource();
+                var _ = InvokeHelperAsync(helperPath, promptArgs.ToString()).ContinueWith(_ => cts.Cancel());
+
+                try
+                {
+                    return await oauthClient.GetTokenByDeviceCodeAsync(deviceCodeResult, cts.Token);
+                }
+                catch (TaskCanceledException e)
+                {
+                    throw new Exception("Authentication was cancelled");
+                }
+            }
             else
             {
                 ThrowIfTerminalPromptsDisabled();
 
-                OAuth2DeviceCodeResult deviceCodeResult = await oauthClient.GetDeviceCodeAsync(scopes, CancellationToken.None);
-
-                string deviceMessage = $"To complete authentication please visit {deviceCodeResult.VerificationUri} and enter the following code:" +
-                                       Environment.NewLine +
-                                       deviceCodeResult.UserCode;
-                Context.Terminal.WriteLine(deviceMessage);
+                Context.Terminal.WriteLine(
+                    "To complete authentication please visit {0} and enter the following code: {1}",
+                    deviceCodeResult.VerificationUri, deviceCodeResult.UserCode);
 
                 return await oauthClient.GetTokenByDeviceCodeAsync(deviceCodeResult, CancellationToken.None);
             }

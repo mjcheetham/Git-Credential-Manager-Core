@@ -15,6 +15,7 @@
         <StackPanel DockPanel.Dock="Right" Margin="10 0 0 0">
             <Button Content="Show Credentials Dialog" Padding="10" Click="ShowCredentials" />
             <Button Content="Show Authentication Code Dialog" Padding="10" Click="ShowAuthenticationCode" />
+            <Button Content="Show Device Code Dialog" Padding="10" Click="ShowDeviceCode" />
         </StackPanel>
         <Grid>
             <Grid.ColumnDefinitions>
@@ -22,6 +23,9 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -33,9 +37,14 @@
             <Label Grid.Row="2" Grid.Column="0" Content="Auth Modes"/>
             <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal"  VerticalAlignment="Center">
                 <CheckBox Content="OAuth" x:Name="useOAuth" Margin="0 0 10 0"/>
-                <CheckBox Content="Pat" x:Name="usePat" Margin="0 0 10 0"/>
+                <CheckBox Content="DevCode" x:Name="useDevCode" Margin="0 0 10 0"/>
+                <CheckBox Content="PAT" x:Name="usePat" Margin="0 0 10 0"/>
                 <CheckBox Content="Basic" x:Name="useBasic"/>
             </StackPanel>
+            <Label Grid.Row="3" Grid.Column="0" Content="User Code"/>
+            <TextBox Grid.Row="3" Grid.Column="1" x:Name="userCode"/>
+            <Label Grid.Row="4" Grid.Column="0" Content="Verification URL"/>
+            <TextBox Grid.Row="4" Grid.Column="1" x:Name="verificationUrl"/>
         </Grid>
     </DockPanel>
 </Window>

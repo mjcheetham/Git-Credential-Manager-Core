@@ -7,15 +7,17 @@ namespace GitHub.UI.Login
 {
     public class LoginCredentialsViewModel : WindowViewModel
     {
-        public LoginCredentialsViewModel(bool showUsernameAuth, bool showBrowserAuth, bool showPatAuth)
+        public LoginCredentialsViewModel(bool showUsernameAuth, bool showBrowserAuth, bool showPatAuth, bool showDevCode)
         {
             isLoginUsingUsernameAndPasswordVisible = showUsernameAuth;
             isLoginUsingBrowserVisible = showBrowserAuth;
             isLoginUsingTokenVisible = showPatAuth;
+            isLoginUsingDeviceCodeVisible = showDevCode;
 
             LoginUsingUsernameAndPasswordCommand = new RelayCommand(LoginUsingUsernameAndPassword, CanLoginUsingUsernameAndPassword);
             LoginUsingTokenCommand = new RelayCommand(LoginUsingToken, CanLoginUsingToken);
             LoginUsingBrowserCommand = new RelayCommand(LoginUsingBrowser);
+            LoginUsingDeviceCodeCommand = new RelayCommand(LoginUsingDeviceCode);
 
             PropertyChanged += LoginCredentialsViewModel_PropertyChanged;
         }
@@ -53,6 +55,11 @@ namespace GitHub.UI.Login
         /// The command that will be invoked when the user clicks on the "Sign in with your browser" link
         /// </summary>
         public RelayCommand LoginUsingBrowserCommand { get; }
+
+        /// <summary>
+        /// The command that will be invoked when the user clicks on the "Sign in with a code" link
+        /// </summary>
+        public RelayCommand LoginUsingDeviceCodeCommand { get; }
 
         /// <summary>
         /// The URL of the GitHub Enterprise instance if this is a GHE authentication dialog.
@@ -114,12 +121,19 @@ namespace GitHub.UI.Login
             set => SetAndRaisePropertyChanged(ref isLoginUsingTokenVisible, value);
         }
         private bool isLoginUsingTokenVisible;
-        
+
+        public bool IsLoginUsingDeviceCodeVisible
+        {
+            get => isLoginUsingDeviceCodeVisible;
+            set => SetAndRaisePropertyChanged(ref isLoginUsingDeviceCodeVisible, value);
+        }
+        private bool isLoginUsingDeviceCodeVisible;
+
         public bool IsBrowserSeparatorVisible
         {
             get => IsLoginUsingBrowserVisible && (IsLoginUsingUsernameAndPasswordVisible || IsLoginUsingTokenVisible);
         }
-        
+
         public bool IsTokenSeparatorVisible
         {
             get => IsLoginUsingUsernameAndPasswordVisible && IsLoginUsingTokenVisible;
@@ -162,6 +176,12 @@ namespace GitHub.UI.Login
         private void LoginUsingBrowser()
         {
             SelectedAuthType = CredentialPromptResult.OAuthAuthentication;
+            Accept();
+        }
+
+        private void LoginUsingDeviceCode()
+        {
+            SelectedAuthType = CredentialPromptResult.DeviceCodeAuthentication;
             Accept();
         }
     }

@@ -1,0 +1,74 @@
+﻿<UserControl x:Class="GitHub.UI.Login.DeviceCodeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:GitHub.UI.Controls"
+             xmlns:octicons="clr-namespace:GitHub.UI.Octicons"
+             Style="{DynamicResource DialogUserControl}">
+
+    <Control.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="..\Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Control.Resources>
+
+    <StackPanel Style="{DynamicResource DialogContainerStackPanel}">
+        <octicons:OcticonImage Icon="logo_github" Style="{DynamicResource GitHubLogo}" />
+        <WrapPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0,0,0,12">
+            <TextBlock Text="Device Activation"
+                       Padding="0"
+                       Margin="0,0,12,0"
+                       Style="{DynamicResource GitHubH1TextBlock}"/>
+        </WrapPanel>
+
+        <controls:HorizontalShadowDivider />
+
+        <TextBlock Margin="30,0,30,30"
+                   HorizontalAlignment="Center"
+                   TextWrapping="Wrap"
+                   TextAlignment="Center"
+                   Style="{DynamicResource GitHubDescriptionTextBlock}">
+
+            <Run Text="{Binding Description, Mode=OneWay}"/>
+            <Hyperlink ToolTip="{Binding NavigateLearnMoreUrl}"
+                       Command="{Binding NavigateLearnMoreCommand}">
+                <Run Text="Learn more" />
+            </Hyperlink>
+        </TextBlock>
+
+        <TextBlock Margin="30,0,30,16"
+                   HorizontalAlignment="Center"
+                   TextWrapping="Wrap"
+                   Style="{DynamicResource GitHubDescriptionTextBlock}">
+            <Hyperlink ToolTip="{Binding VerificationUrl}"
+                       Command="{Binding NavigateVerificationCommand}">
+                <Run Text="{Binding VerificationUrl, Mode=OneWay}" />
+            </Hyperlink>
+        </TextBlock>
+
+        <TextBox TabIndex="1"
+                 HorizontalAlignment="Center"
+                 Text="{Binding UserCode, Mode=OneWay}"
+                 IsReadOnly="True"
+                 Style="{DynamicResource GitHubCodeTextBox}"/>
+
+        <TextBlock Margin="30,24,30,10"
+                   HorizontalAlignment="Center"
+                   TextWrapping="Wrap"
+                   TextAlignment="Center"
+                   Style="{DynamicResource GitHubDescriptionTextBlock}">
+            <Run Text="{Binding AutoCloseMessage, Mode=OneWay}" />
+        </TextBlock>
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Margin="0,10,0, 30">
+            <Button TabIndex="2"
+                    IsDefault="True"
+                    Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    Style="{DynamicResource GitHubButton}"/>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

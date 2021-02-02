@@ -147,7 +147,10 @@ namespace GitHub
                     return patCredential;
 
                 case AuthenticationModes.OAuth:
-                    return await GenerateOAuthCredentialAsync(remoteUri);
+                    return await GenerateOAuthCredentialAsync(remoteUri, useDeviceCode: false);
+
+                case AuthenticationModes.DeviceCode:
+                    return await GenerateOAuthCredentialAsync(remoteUri, useDeviceCode: true);
 
                 case AuthenticationModes.Pat:
                     // The token returned by the user should be good to use directly as the password for Git
@@ -170,9 +173,9 @@ namespace GitHub
             }
         }
 
-        private async Task<GitCredential> GenerateOAuthCredentialAsync(Uri targetUri)
+        private async Task<GitCredential> GenerateOAuthCredentialAsync(Uri targetUri, bool useDeviceCode)
         {
-            OAuth2TokenResult result = await _gitHubAuth.GetOAuthTokenAsync(targetUri, GitHubOAuthScopes);
+            OAuth2TokenResult result = await _gitHubAuth.GetOAuthTokenAsync(targetUri, GitHubOAuthScopes, useDeviceCode);
 
             // Resolve the GitHub user handle
             GitHubUserInfo userInfo = await _gitHubApi.GetUserInfoAsync(targetUri, result.AccessToken);
@@ -240,7 +243,7 @@ namespace GitHub
                 }
             }
 
-            // GitHub.com should use OAuth or manual PAT based authentication only, never basic auth as of 13th November 2020
+            // GitHub.com should use OAuth/device-code or manual PAT based authentication only, never basic auth as of 13th November 2020
             // https://developer.github.com/changes/2020-02-14-deprecating-oauth-auth-endpoint
             if (IsGitHubDotCom(targetUri))
             {
@@ -255,6 +258,7 @@ namespace GitHub
             {
                 GitHubMetaInfo metaInfo = await _gitHubApi.GetMetaInfoAsync(targetUri);
 
+                // TODO: does GHES support Device Code flows?
                 var modes = AuthenticationModes.Pat;
                 if (metaInfo.VerifiablePasswordAuthentication)
                 {

@@ -184,9 +184,20 @@
         <Setter Property="FontSize" Value="16" />
         <Setter Property="FontWeight" Value="Thin" />
     </Style>
+    <Style TargetType="{x:Type TextBlock}" x:Key="GitHubFootnoteTextBlock">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="Thin" />
+    </Style>
     <Style TargetType="{x:Type TextBlock}" x:Key="GitHubH1TextBlock">
         <Setter Property="FontSize" Value="24" />
         <Setter Property="FontWeight" Value="Thin" />
+    </Style>
+    <Style TargetType="{x:Type TextBox}" x:Key="GitHubCodeTextBox">
+        <Setter Property="FontSize" Value="32" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
     <Style TargetType="{x:Type Label}" />
 </ResourceDictionary>

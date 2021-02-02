@@ -23,7 +23,11 @@ namespace GitHub.UI
 
         private void ShowCredentials(object sender, RoutedEventArgs e)
         {
-            var model = new LoginCredentialsViewModel(useBasic.IsChecked ?? false, useOAuth.IsChecked ?? false, usePat.IsChecked ?? false);
+            var model = new LoginCredentialsViewModel(
+                useBasic.IsChecked ?? false,
+                useOAuth.IsChecked ?? false,
+                usePat.IsChecked ?? false,
+                useDevCode.IsChecked ?? false);
             if (!string.IsNullOrWhiteSpace(enterpriseUrl.Text))
             {
                 model.GitHubEnterpriseUrl = enterpriseUrl.Text;
@@ -43,6 +47,14 @@ namespace GitHub.UI
         {
             var model = new Login2FaViewModel(TwoFactorType.AuthenticatorApp);
             var view = new Login2FaView();
+            var window = new DialogWindow(model, view);
+            Gui.ShowDialog(window, Handle);
+        }
+
+        private void ShowDeviceCode(object sender, RoutedEventArgs e)
+        {
+            var model = new DeviceCodeViewModel(userCode.Text, verificationUrl.Text);
+            var view = new DeviceCodeView();
             var window = new DialogWindow(model, view);
             Gui.ShowDialog(window, Handle);
         }

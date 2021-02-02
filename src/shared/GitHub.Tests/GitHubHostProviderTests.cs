@@ -198,7 +198,7 @@ namespace GitHub.Tests
             ghAuthMock.Setup(x => x.GetAuthenticationAsync(expectedTargetUri, null, It.IsAny<AuthenticationModes>()))
                       .ReturnsAsync(new AuthenticationPromptResult(AuthenticationModes.OAuth));
 
-            ghAuthMock.Setup(x => x.GetOAuthTokenAsync(expectedTargetUri, It.IsAny<IEnumerable<string>>()))
+            ghAuthMock.Setup(x => x.GetOAuthTokenAsync(expectedTargetUri, It.IsAny<IEnumerable<string>>(), false))
                       .ReturnsAsync(response);
 
             var ghApiMock = new Mock<IGitHubRestApi>(MockBehavior.Strict);
@@ -215,7 +215,55 @@ namespace GitHub.Tests
 
             ghAuthMock.Verify(
                 x => x.GetOAuthTokenAsync(
-                    expectedTargetUri, expectedOAuthScopes),
+                    expectedTargetUri, expectedOAuthScopes, false),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task GitHubHostProvider_GenerateCredentialAsync_DeviceCode_ReturnsCredential()
+        {
+            var input = new InputArguments(new Dictionary<string, string>
+            {
+                ["protocol"] = "https",
+                ["host"] = "github.com",
+            });
+
+            var expectedTargetUri = new Uri("https://github.com/");
+            IEnumerable<string> expectedOAuthScopes = new[]
+            {
+                GitHubConstants.OAuthScopes.Repo,
+                GitHubConstants.OAuthScopes.Gist,
+                GitHubConstants.OAuthScopes.Workflow,
+            };
+
+            var expectedUserName = "john.doe";
+            var tokenValue = "OAUTH-TOKEN";
+            var response = new OAuth2TokenResult(tokenValue, "bearer");
+
+            var context = new TestCommandContext();
+
+            var ghAuthMock = new Mock<IGitHubAuthentication>(MockBehavior.Strict);
+            ghAuthMock.Setup(x => x.GetAuthenticationAsync(expectedTargetUri, null, It.IsAny<AuthenticationModes>()))
+                      .ReturnsAsync(new AuthenticationPromptResult(AuthenticationModes.OAuth));
+
+            ghAuthMock.Setup(x => x.GetOAuthTokenAsync(expectedTargetUri, It.IsAny<IEnumerable<string>>(), true))
+                      .ReturnsAsync(response);
+
+            var ghApiMock = new Mock<IGitHubRestApi>(MockBehavior.Strict);
+            ghApiMock.Setup(x => x.GetUserInfoAsync(expectedTargetUri, tokenValue))
+                     .ReturnsAsync(new GitHubUserInfo{Login = expectedUserName});
+
+            var provider = new GitHubHostProvider(context, ghApiMock.Object, ghAuthMock.Object);
+
+            ICredential credential = await provider.GenerateCredentialAsync(input);
+
+            Assert.NotNull(credential);
+            Assert.Equal(expectedUserName, credential.Account);
+            Assert.Equal(tokenValue, credential.Password);
+
+            ghAuthMock.Verify(
+                x => x.GetOAuthTokenAsync(
+                    expectedTargetUri, expectedOAuthScopes, true),
                 Times.Once);
         }
 

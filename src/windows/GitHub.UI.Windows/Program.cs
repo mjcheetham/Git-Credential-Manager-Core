@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Microsoft.Git.CredentialManager;
 using Microsoft.Git.CredentialManager.UI;
 
@@ -29,19 +28,20 @@ namespace GitHub.UI
                     if (StringComparer.OrdinalIgnoreCase.Equals(args[0], "prompt"))
                     {
                         string enterpriseUrl = CommandLineUtils.GetParameter(args, "--enterprise-url");
-                        bool showAll    = CommandLineUtils.TryGetSwitch(args, "--all");
-                        bool showBasic  = CommandLineUtils.TryGetSwitch(args, "--basic") || showAll;
-                        bool showOAuth  = CommandLineUtils.TryGetSwitch(args, "--oauth") || showAll;
-                        bool showPat    = CommandLineUtils.TryGetSwitch(args, "--pat")   || showAll;
-                        string username = CommandLineUtils.GetParameter(args, "--username");
+                        bool showAll     = CommandLineUtils.TryGetSwitch(args, "--all");
+                        bool showBasic   = CommandLineUtils.TryGetSwitch(args, "--basic")   || showAll;
+                        bool showOAuth   = CommandLineUtils.TryGetSwitch(args, "--oauth")   || showAll;
+                        bool showDevCode = CommandLineUtils.TryGetSwitch(args, "--devcode") || showAll;
+                        bool showPat     = CommandLineUtils.TryGetSwitch(args, "--pat")     || showAll;
+                        string username  = CommandLineUtils.GetParameter(args, "--username");
 
-                        if (!showBasic && !showOAuth && !showPat && !showAll)
+                        if (!showBasic && !showOAuth && !showPat && !showDevCode && !showAll)
                         {
                             throw new Exception("at least one authentication mode must be specified");
                         }
 
                         var result = prompts.ShowCredentialPrompt(
-                            enterpriseUrl, showBasic, showOAuth, showPat,
+                            enterpriseUrl, showBasic, showOAuth, showPat, showDevCode,
                             ref username, out string password, out string token);
 
                         switch (result)
@@ -54,6 +54,10 @@ namespace GitHub.UI
 
                             case CredentialPromptResult.OAuthAuthentication:
                                 resultDict["mode"] = "oauth";
+                                break;
+
+                            case CredentialPromptResult.DeviceCodeAuthentication:
+                                resultDict["mode"] = "devcode";
                                 break;
 
                             case CredentialPromptResult.PersonalAccessToken:
@@ -78,6 +82,20 @@ namespace GitHub.UI
                         }
 
                         resultDict["code"] = authCode;
+                    }
+                    else if (StringComparer.OrdinalIgnoreCase.Equals(args[0], "devcode"))
+                    {
+                        string userCode = CommandLineUtils.GetParameter(args, "--code");
+                        string verificationUrl = CommandLineUtils.GetParameter(args, "--url");
+
+                        if (string.IsNullOrWhiteSpace(userCode)) throw new Exception("Missing --code argument");
+                        if (string.IsNullOrWhiteSpace(verificationUrl)) throw new Exception("Missing --url argument");
+
+                        prompts.ShowDeviceCodePrompt(userCode, verificationUrl);
+
+                        // If the user closed the dialog we cancel authentication.
+                        // The caller will kill our process on success instead so no need to return anything else.
+                        resultDict["cancel"] = bool.TrueString;
                     }
                     else
                     {

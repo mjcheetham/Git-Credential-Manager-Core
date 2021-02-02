@@ -8,7 +8,7 @@
         SizeToContent="Height"
         MinHeight="320"
         MaxWidth="414"
-        MaxHeight="520"
+        MaxHeight="550"
         Background="{DynamicResource WindowPanelBrush}"
         Foreground="{DynamicResource WindowPanelTextBrush}"
         FontFamily="Segoe UI"

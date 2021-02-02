@@ -16,13 +16,13 @@ namespace GitHub.UI
         private readonly IGui _gui;
 
         public CredentialPromptResult ShowCredentialPrompt(
-            string enterpriseUrl, bool showBasic, bool showOAuth, bool showPat,
+            string enterpriseUrl, bool showBasic, bool showOAuth, bool showPat, bool showDevCode,
             ref string username, out string password, out string token)
         {
             password = null;
             token = null;
 
-            var viewModel = new LoginCredentialsViewModel(showBasic, showOAuth, showPat)
+            var viewModel = new LoginCredentialsViewModel(showBasic, showOAuth, showPat, showDevCode)
             {
                 GitHubEnterpriseUrl = enterpriseUrl,
                 UsernameOrEmail = username
@@ -43,6 +43,9 @@ namespace GitHub.UI
 
                 case CredentialPromptResult.OAuthAuthentication:
                     return CredentialPromptResult.OAuthAuthentication;
+
+                case CredentialPromptResult.DeviceCodeAuthentication:
+                    return CredentialPromptResult.DeviceCodeAuthentication;
 
                 case CredentialPromptResult.PersonalAccessToken:
                     if (valid)
@@ -66,6 +69,13 @@ namespace GitHub.UI
 
             return valid;
         }
+
+        public void ShowDeviceCodePrompt(string userCode, string verificationUrl)
+        {
+            var viewModel = new DeviceCodeViewModel(userCode, verificationUrl);
+
+            _gui.ShowDialogWindow(viewModel, () => new DeviceCodeView());
+        }
     }
 
     public enum CredentialPromptResult
@@ -73,6 +83,7 @@ namespace GitHub.UI
         BasicAuthentication,
         OAuthAuthentication,
         PersonalAccessToken,
+        DeviceCodeAuthentication,
         Cancel,
     }
 }
