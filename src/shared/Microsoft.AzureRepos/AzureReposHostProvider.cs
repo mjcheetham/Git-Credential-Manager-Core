@@ -77,21 +77,20 @@ namespace Microsoft.AzureRepos
             string service = GetServiceName(input);
             string account = GetAccountNameForCredentialQuery(input);
 
-            _context.Trace.WriteLine($"Looking for existing credential in store with service={service} account={account}...");
+            _context.Trace.WriteLine($"Looking for AAD account in store with service={service} account={account}...");
+
+            Uri remoteUri = input.GetRemoteUri();
 
             ICredential credential = _context.CredentialStore.Get(service, account);
             if (credential == null)
             {
-                _context.Trace.WriteLine("No existing credentials found.");
-
-                // No existing credential was found, create a new one
-                _context.Trace.WriteLine("Creating new credential...");
-                credential = await GenerateCredentialAsync(input);
-                _context.Trace.WriteLine("Credential created.");
+                _context.Trace.WriteLine("No existing AAD account found.");
+                credential = await GetAccessTokenAsync(remoteUri, null);
             }
             else
             {
-                _context.Trace.WriteLine("Existing credential found.");
+                _context.Trace.WriteLine($"Existing AAD account found: {credential.Account}");
+                credential = await GetAccessTokenAsync(remoteUri, credential.Account);
             }
 
             return credential;
@@ -101,14 +100,14 @@ namespace Microsoft.AzureRepos
         {
             string service = GetServiceName(input);
 
-            // We always store credentials against the given username argument for
+            // We always store account information against the given username argument for
             // both vs.com and dev.azure.com-style URLs.
             string account = input.UserName;
 
-            // Add or update the credential in the store.
-            _context.Trace.WriteLine($"Storing credential with service={service} account={account}...");
-            _context.CredentialStore.AddOrUpdate(service, account, input.Password);
-            _context.Trace.WriteLine("Credential was successfully stored.");
+            // Add or update the account in the store.
+            _context.Trace.WriteLine($"Storing AAD account with service={service} account={account}...");
+            _context.CredentialStore.AddOrUpdate(service, account, account);
+            _context.Trace.WriteLine("AAD account was successfully stored.");
 
             return Task.CompletedTask;
         }
@@ -118,15 +117,15 @@ namespace Microsoft.AzureRepos
             string service = GetServiceName(input);
             string account = GetAccountNameForCredentialQuery(input);
 
-            // Try to locate an existing credential
-            _context.Trace.WriteLine($"Erasing stored credential in store with service={service} account={account}...");
+            // Try to locate an existing account
+            _context.Trace.WriteLine($"Erasing stored AAD account in store with service={service} account={account}...");
             if (_context.CredentialStore.Remove(service, account))
             {
-                _context.Trace.WriteLine("Credential was successfully erased.");
+                _context.Trace.WriteLine("AAD account was successfully erased.");
             }
             else
             {
-                _context.Trace.WriteLine("No credential was erased.");
+                _context.Trace.WriteLine("No AAD account was erased.");
             }
 
             // Clear the authority cache in case this was the reason for failure
@@ -141,17 +140,16 @@ namespace Microsoft.AzureRepos
             base.ReleaseManagedResources();
         }
 
-        private async Task<ICredential> GenerateCredentialAsync(InputArguments input)
+        private async Task<ICredential> GetAccessTokenAsync(Uri remoteUri, string account)
         {
             ThrowIfDisposed();
 
             // We should not allow unencrypted communication and should inform the user
-            if (StringComparer.OrdinalIgnoreCase.Equals(input.Protocol, "http"))
+            if (StringComparer.OrdinalIgnoreCase.Equals(remoteUri.Scheme, Uri.UriSchemeHttp))
             {
                 throw new Exception("Unencrypted HTTP is not supported for Azure Repos. Ensure the repository remote URL is using HTTPS.");
             }
 
-            Uri remoteUri = input.GetRemoteUri();
             Uri orgUri = UriHelpers.CreateOrganizationUri(remoteUri, out string orgName);
 
             // Determine the MS authentication authority for this organization
@@ -173,25 +171,12 @@ namespace Microsoft.AzureRepos
                 GetClientId(),
                 GetRedirectUri(),
                 AzureDevOpsConstants.AzureDevOpsDefaultScopes,
-                null);
+                account);
             _context.Trace.WriteLineSecrets(
                 $"Acquired Azure access token. Account='{result.AccountUpn}' Token='{{0}}' TokenSource='{result.TokenSource}'",
                 new object[] {result.AccessToken});
 
-            // Ask the Azure DevOps instance to create a new PAT
-            var patScopes = new[]
-            {
-                AzureDevOpsConstants.PersonalAccessTokenScopes.ReposWrite,
-                AzureDevOpsConstants.PersonalAccessTokenScopes.ArtifactsRead
-            };
-            _context.Trace.WriteLine($"Creating Azure DevOps PAT with scopes '{string.Join(", ", patScopes)}'...");
-            string pat = await _azDevOps.CreatePersonalAccessTokenAsync(
-                orgUri,
-                result.AccessToken,
-                patScopes);
-            _context.Trace.WriteLineSecrets("PAT created. PAT='{0}'", new object[] {pat});
-
-            return new GitCredential(result.AccountUpn, pat);
+            return new GitCredential(result.AccountUpn, result.AccessToken);
         }
 
         private string GetClientId()
