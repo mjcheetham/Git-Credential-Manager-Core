@@ -135,7 +135,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = "auto";
+            git.Configuration.Global[$"{section}.{property}"] = new[] {"auto"};
 
             var settings = new Settings(envars, git);
 
@@ -150,7 +150,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = "always";
+            git.Configuration.Global[$"{section}.{property}"] = new[] {"always"};
 
             var settings = new Settings(envars, git);
 
@@ -165,7 +165,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = "never";
+            git.Configuration.Global[$"{section}.{property}"] = new[] {"never"};
 
             var settings = new Settings(envars, git);
 
@@ -180,7 +180,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = "1";
+            git.Configuration.Global[$"{section}.{property}"] = new[] {"1"};
 
             var settings = new Settings(envars, git);
 
@@ -195,7 +195,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = "0";
+            git.Configuration.Global[$"{section}.{property}"] = new[] {"0"};
 
             var settings = new Settings(envars, git);
 
@@ -210,7 +210,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = Guid.NewGuid().ToString();
+            git.Configuration.Global[$"{section}.{property}"] = new[] {Guid.NewGuid().ToString()};
 
             var settings = new Settings(envars, git);
 
@@ -392,7 +392,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = "1";
+            git.Configuration.Global[$"{section}.{property}"] = new[] {"1"};
 
             var settings = new Settings(envars, git);
 
@@ -407,7 +407,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = "0";
+            git.Configuration.Global[$"{section}.{property}"] = new[] {"0"};
 
             var settings = new Settings(envars, git);
 
@@ -422,7 +422,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = Guid.NewGuid().ToString();
+            git.Configuration.Global[$"{section}.{property}"] = new[] {Guid.NewGuid().ToString()};
 
             var settings = new Settings(envars, git);
 
@@ -459,7 +459,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = expectedValue.ToString();
+            git.Configuration.Global[$"{section}.{property}"] = new[] {expectedValue.ToString()};
 
             var settings = new Settings(envars, git)
             {
@@ -483,7 +483,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = expectedValue.ToString();
+            git.Configuration.Global[$"{section}.{property}"] = new[] {expectedValue.ToString()};
 
             var settings = new Settings(envars, git)
             {
@@ -507,7 +507,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = expectedValue.ToString();
+            git.Configuration.Global[$"{section}.{property}"] = new[] {expectedValue.ToString()};
 
             var settings = new Settings(envars, git)
             {
@@ -657,12 +657,14 @@ namespace Microsoft.Git.CredentialManager.Tests
             RunTest(value2);
 
              // Test case 2: http.proxy > cURL environment variables
-            git.GlobalConfiguration[$"{Constants.GitConfiguration.Http.SectionName}.{Constants.GitConfiguration.Http.Proxy}"] = value3.ToString();
-            RunTest(value3);
+             string httpProxyKey = $"{Constants.GitConfiguration.Http.SectionName}.{Constants.GitConfiguration.Http.Proxy}";
+             git.Configuration.Global[httpProxyKey] = new[] {value3.ToString()};
+             RunTest(value3);
 
              // Test case 3: credential.httpProxy > http.proxy
-             git.GlobalConfiguration[$"{Constants.GitConfiguration.Credential.SectionName}.{Constants.GitConfiguration.Credential.HttpProxy}"] = value4.ToString();
-            RunTest(value4);
+             string credentialProxyKey = $"{Constants.GitConfiguration.Credential.SectionName}.{Constants.GitConfiguration.Credential.HttpProxy}";
+             git.Configuration.Global[credentialProxyKey] = new[] {value4.ToString()};
+             RunTest(value4);
         }
 
         [Fact]
@@ -718,7 +720,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = expectedValue;
+            git.Configuration.Global[$"{section}.{property}"] = new[] {expectedValue};
 
             var settings = new Settings(envars, git)
             {
@@ -745,7 +747,7 @@ namespace Microsoft.Git.CredentialManager.Tests
                 Variables = {[Constants.EnvironmentVariables.GcmProvider] = expectedValue}
             };
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = otherValue;
+            git.Configuration.Global[$"{section}.{property}"] = new[] {otherValue};
 
             var settings = new Settings(envars, git)
             {
@@ -809,7 +811,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = expectedValue;
+            git.Configuration.Global[$"{section}.{property}"] = new[] {expectedValue};
 
             var settings = new Settings(envars, git)
             {
@@ -836,7 +838,7 @@ namespace Microsoft.Git.CredentialManager.Tests
                 Variables = {[Constants.EnvironmentVariables.GcmAuthority] = expectedValue}
             };
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = otherValue;
+            git.Configuration.Global[$"{section}.{property}"] = new[] {otherValue};
 
             var settings = new Settings(envars, git)
             {
@@ -909,7 +911,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.GlobalConfiguration[$"{section}.{property}"] = expectedValue;
+            git.Configuration.Global[$"{section}.{property}"] = new[] {expectedValue};
 
             var settings = new Settings(envars, git)
             {
@@ -934,7 +936,7 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.LocalConfiguration[$"{section}.{property}"] = expectedValue;
+            git.Configuration.Local[$"{section}.{property}"] = new[] {expectedValue};
 
             var settings = new Settings(envars, git)
             {
@@ -962,8 +964,8 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             var envars = new TestEnvironment();
             var git = new TestGit();
-            git.LocalConfiguration[$"{section}.{scope1}.{property}"] = otherValue;
-            git.LocalConfiguration[$"{section}.{scope2}.{property}"] = expectedValue;
+            git.Configuration.Local[$"{section}.{scope1}.{property}"] = new []{otherValue};
+            git.Configuration.Local[$"{section}.{scope2}.{property}"] = new []{expectedValue};
 
             var settings = new Settings(envars, git)
             {
@@ -992,7 +994,7 @@ namespace Microsoft.Git.CredentialManager.Tests
                 Variables = {[envarName] = expectedValue}
             };
             var git = new TestGit();
-            git.LocalConfiguration[$"{section}.{property}"] = otherValue;
+            git.Configuration.Local[$"{section}.{property}"] = new[] {otherValue};
 
             var settings = new Settings(envars, git)
             {
@@ -1027,9 +1029,9 @@ namespace Microsoft.Git.CredentialManager.Tests
                 Variables = {[envarName] = value1}
             };
             var git = new TestGit();
-            git.LocalConfiguration[$"{section}.{scope1}.{property}"] = value2;
-            git.LocalConfiguration[$"{section}.{scope2}.{property}"] = value3;
-            git.LocalConfiguration[$"{section}.{property}"]          = value4;
+            git.Configuration.Local[$"{section}.{scope1}.{property}"] = new[]{value2};
+            git.Configuration.Local[$"{section}.{scope2}.{property}"] = new[]{value3};
+            git.Configuration.Local[$"{section}.{property}"]          = new[]{value4};
 
             var settings = new Settings(envars, git)
             {
@@ -1068,11 +1070,11 @@ namespace Microsoft.Git.CredentialManager.Tests
             };
 
             var git = new TestGit();
-            git.LocalConfiguration[$"{section}.{property}"] = noScopeValue;
-            git.LocalConfiguration[$"{section}.{broadScope}.{property}"] = broadScopeValue;
-            git.LocalConfiguration[$"{section}.{tightScope}.{property}"] = tightScopeValue;
-            git.LocalConfiguration[$"{section}.{otherScope1}.{property}"] = otherValue1;
-            git.LocalConfiguration[$"{section}.{otherScope2}.{property}"] = otherValue2;
+            git.Configuration.Local[$"{section}.{property}"] = new[] {noScopeValue};
+            git.Configuration.Local[$"{section}.{broadScope}.{property}"] = new[] {broadScopeValue};
+            git.Configuration.Local[$"{section}.{tightScope}.{property}"] = new[] {tightScopeValue};
+            git.Configuration.Local[$"{section}.{otherScope1}.{property}"] = new[] {otherValue1};
+            git.Configuration.Local[$"{section}.{otherScope2}.{property}"] = new[] {otherValue2};
 
             var settings = new Settings(envars, git)
             {
@@ -1113,9 +1115,9 @@ namespace Microsoft.Git.CredentialManager.Tests
             };
 
             var git = new TestGit();
-            git.LocalConfiguration[$"{sectionLo}.{propertyHi}"] = noScopeValue;
-            git.LocalConfiguration[$"{sectionHi}.{scopeLo}.{propertyHi}"] = lowScopeValue;
-            git.LocalConfiguration[$"{sectionLo}.{scopeHi}.{propertyLo}"] = highScopeValue;
+            git.Configuration.Local[$"{sectionLo}.{propertyHi}"] = new[] {noScopeValue};
+            git.Configuration.Local[$"{sectionHi}.{scopeLo}.{propertyHi}"] = new[] {lowScopeValue};
+            git.Configuration.Local[$"{sectionLo}.{scopeHi}.{propertyLo}"] = new[] {highScopeValue};
 
             var settings = new Settings(envars, git)
             {
