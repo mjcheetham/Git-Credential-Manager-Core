@@ -20,25 +20,29 @@ namespace Microsoft.AzureRepos
         private readonly IAzureDevOpsRestApi _azDevOps;
         private readonly IMicrosoftAuthentication _msAuth;
         private readonly IAzureDevOpsAuthorityCache _authorityCache;
+        private readonly IAzureReposBindingManager _bindingManager;
 
         public AzureReposHostProvider(ICommandContext context)
             : this(context, new AzureDevOpsRestApi(context), new MicrosoftAuthentication(context),
-                new AzureDevOpsAuthorityCache(context))
+                new AzureDevOpsAuthorityCache(context), new AzureReposBindingManager(context))
         {
         }
 
         public AzureReposHostProvider(ICommandContext context, IAzureDevOpsRestApi azDevOps,
-            IMicrosoftAuthentication msAuth, IAzureDevOpsAuthorityCache authorityCache)
+            IMicrosoftAuthentication msAuth, IAzureDevOpsAuthorityCache authorityCache,
+            IAzureReposBindingManager bindingManager)
         {
             EnsureArgument.NotNull(context, nameof(context));
             EnsureArgument.NotNull(azDevOps, nameof(azDevOps));
             EnsureArgument.NotNull(msAuth, nameof(msAuth));
             EnsureArgument.NotNull(authorityCache, nameof(authorityCache));
+            EnsureArgument.NotNull(bindingManager, nameof(bindingManager));
 
             _context = context;
             _azDevOps = azDevOps;
             _msAuth = msAuth;
             _authorityCache = authorityCache;
+            _bindingManager = bindingManager;
         }
 
         #region IHostProvider
@@ -129,7 +133,10 @@ namespace Microsoft.AzureRepos
             }
             else
             {
-                _context.Trace.WriteLine("Nothing to store when PAT mode is disabled.");
+                Uri remoteUri = input.GetRemoteUri();
+                string orgName = UriHelpers.GetOrganizationName(remoteUri);
+                _context.Trace.WriteLine($"Signing user {input.UserName} in to organization '{orgName}'...");
+                _bindingManager.SignIn(orgName, input.UserName);
             }
 
             return Task.CompletedTask;
@@ -158,7 +165,8 @@ namespace Microsoft.AzureRepos
             }
             else
             {
-                _context.Trace.WriteLine("Nothing to erase when PAT mode is disabled.");
+                _context.Trace.WriteLine($"Signing out of organization '{orgName}'...");
+                _bindingManager.SignOut(orgName);
             }
 
             // Clear the authority cache in case this was the reason for failure
@@ -214,17 +222,25 @@ namespace Microsoft.AzureRepos
 
             //
             // If the remote URI is a classic "*.visualstudio.com" remote and we have a user specified in the URI
-            // then take that as the current AAD/MSA user.
+            // then take that as the current AAD/MSA user in the first instance.
             //
             // For "dev.azure.com" style remote we cannot use the user info part of the URI because this has been
             // hacked to be the Azure DevOps organization name instead (not an actual username).
             //
-            string userName = null;
+            // If we have no specified user from the URL (or this is dev.azure.com) then query the user manager for
+            // a bound user for this organization, if one exists...
+            //
+            string userName;
             if (UriHelpers.IsVisualStudioComHost(remoteUri.Host) &&
                 remoteUri.TryGetUserInfo(out userName, out _) &&
                 !string.IsNullOrWhiteSpace(userName))
             {
                 _context.Trace.WriteLine($"Using username as specified in remote URL '{remoteUri}'.");
+            }
+            else
+            {
+                _context.Trace.WriteLine($"Looking up user for organization '{orgName}'...");
+                userName = _bindingManager.GetUser(orgName);
             }
 
             _context.Trace.WriteLine(string.IsNullOrWhiteSpace(userName) ? "No user found." : $"User is '{userName}'.");
