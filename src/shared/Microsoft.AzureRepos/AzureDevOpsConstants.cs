@@ -24,6 +24,8 @@ namespace Microsoft.AzureRepos
 
         public const string VssResourceTenantHeader = "X-VSS-ResourceTenant";
 
+        public const string OrganizationUrnScheme = "azrepos-org";
+
         public static class PersonalAccessTokenScopes
         {
             public const string ReposWrite = "vso.code_write";
@@ -44,6 +46,7 @@ namespace Microsoft.AzureRepos
                 public const string DevAadClientId = "azreposDevClientId";
                 public const string DevAadRedirectUri = "azreposDevRedirectUri";
                 public const string DevAadAuthorityBaseUri = "azreposDevAuthorityBaseUri";
+                public const string AzureAuthority = "azureAuthority";
             }
         }
     }
