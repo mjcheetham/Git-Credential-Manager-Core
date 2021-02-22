@@ -534,7 +534,7 @@ namespace Microsoft.AzureRepos
             var orgRemotesMap = new Dictionary<string, ICollection<RemoteBinding>>();
             if (showRemotes)
             {
-                if (_context.Git.GetCurrentRepository() is null)
+                if (!_context.Git.IsInsideRepository())
                 {
                     _context.Streams.Error.WriteLine("warning: not inside a git repository (--show-remotes has no effect)");
                 }
@@ -635,7 +635,7 @@ namespace Microsoft.AzureRepos
 
         private int BindCmd(string organization, string userName, bool local)
         {
-            if (local && _context.Git.GetCurrentRepository() is null)
+            if (local && !_context.Git.IsInsideRepository())
             {
                 _context.Streams.Error.WriteLine("error: not inside a git repository (cannot use --local)");
                 return -1;
@@ -647,7 +647,7 @@ namespace Microsoft.AzureRepos
 
         private int UnbindCmd(string organization, bool local)
         {
-            if (local && _context.Git.GetCurrentRepository() is null)
+            if (local && !_context.Git.IsInsideRepository())
             {
                 _context.Streams.Error.WriteLine("error: not inside a git repository (cannot use --local)");
                 return -1;

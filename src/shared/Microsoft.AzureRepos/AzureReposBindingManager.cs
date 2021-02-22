@@ -119,7 +119,15 @@ namespace Microsoft.AzureRepos
                 _trace.WriteLine(userName == AzureReposBinding.NoInherit
                     ? $"Setting binding to 'do not inherit' for organization '{orgName}' in local repository..."
                     : $"Binding user '{userName}' to organization '{orgName}' in local repository...");
-                config.Set(GitConfigurationLevel.Local, key, userName);
+
+                if (_git.IsInsideRepository())
+                {
+                    config.Set(GitConfigurationLevel.Local, key, userName);
+                }
+                else
+                {
+                    _trace.WriteLine("Cannot set local configuration binding - not inside a repository!");
+                }
             }
             else
             {
@@ -141,7 +149,14 @@ namespace Microsoft.AzureRepos
             if (local)
             {
                 _trace.WriteLine($"Unbinding organization '{orgName}' in local repository...");
-                config.Unset(GitConfigurationLevel.Local, key);
+                if (_git.IsInsideRepository())
+                {
+                    config.Unset(GitConfigurationLevel.Local, key);
+                }
+                else
+                {
+                    _trace.WriteLine("Cannot set local configuration binding - not inside a repository!");
+                }
             }
             else
             {
