@@ -1,11 +1,10 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 using System;
-using Microsoft.Git.CredentialManager.Authentication;
 using Microsoft.Git.CredentialManager.Tests.Objects;
 using Xunit;
 
-namespace Microsoft.Git.CredentialManager.Tests.Authentication
+namespace Microsoft.Authentication.Tests
 {
     public class MicrosoftAuthenticationTests
     {

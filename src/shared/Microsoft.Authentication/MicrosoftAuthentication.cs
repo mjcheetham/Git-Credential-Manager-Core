@@ -4,12 +4,16 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Microsoft.Git.CredentialManager;
+using Microsoft.Git.CredentialManager.Authentication;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Client.Extensions.Msal;
+#if WINDOWS
+using Microsoft.Web.WebView2.Core;
+#endif
 
-namespace Microsoft.Git.CredentialManager.Authentication
+namespace Microsoft.Authentication
 {
     public interface IMicrosoftAuthentication
     {
@@ -28,7 +32,8 @@ namespace Microsoft.Git.CredentialManager.Authentication
         Auto = 0,
         EmbeddedWebView = 1,
         SystemWebView = 2,
-        DeviceCode = 3
+        DeviceCode = 3,
+        OperatingSystemBroker = 4,
     }
 
     public class MicrosoftAuthentication : AuthenticationBase, IMicrosoftAuthentication
@@ -48,7 +53,23 @@ namespace Microsoft.Git.CredentialManager.Authentication
         public async Task<IMicrosoftAuthenticationResult> GetTokenAsync(
             string authority, string clientId, Uri redirectUri, string[] scopes, string userName)
         {
-            IPublicClientApplication app = await CreatePublicClientApplicationAsync(authority, clientId, redirectUri);
+            PublicClientApplicationBuilder builder = CreateAppBuilder(authority, clientId, redirectUri);
+
+            // Check for a user flow preference
+            MicrosoftAuthenticationFlowType flowType = GetFlowType();
+
+            // Register to use the broker now if we are allowed to and are required to based on the selected flow
+            if (CanUseOperatingSystemBroker() &&
+                (flowType == MicrosoftAuthenticationFlowType.Auto ||
+                 flowType == MicrosoftAuthenticationFlowType.OperatingSystemBroker))
+            {
+                builder.WithExperimentalFeatures().WithBroker();
+            }
+
+            IPublicClientApplication app = builder.Build();
+
+            // Register the token cache
+            await RegisterTokenCacheAsync(app);
 
             AuthenticationResult result = null;
 
@@ -59,35 +80,39 @@ namespace Microsoft.Git.CredentialManager.Authentication
             }
 
             //
-            // If we failed to acquire an AT silently (either because we don't have an existing user, or the user's RT has expired)
-            // we need to prompt the user for credentials.
+            // If we failed to acquire an AT silently (either because we don't have an existing user, or the user's RT
+            // has expired) we need to prompt the user for credentials.
             //
-            // If the user has expressed a preference in how the want to perform the interactive authentication flows then we respect that.
-            // Otherwise, depending on the current platform and session type we try to show the most appropriate authentication interface:
+            // If the user has expressed a preference in how the want to perform the interactive authentication flows
+            // then we respect that.
             //
-            // On .NET Framework MSAL supports the WinForms based 'embedded' webview UI. For Windows + .NET Framework this is the
-            // best and natural experience.
+            // Otherwise, depending on the current platform and session type we try to show the most appropriate
+            // authentication interface:
             //
-            // On other runtimes (e.g., .NET Core) MSAL only supports the system webview flow (launch the user's browser),
-            // and the device-code flows.
+            // If we can use the OS broker then delegate to that. This is the best and natural experience.
             //
-            //     Note: .NET Core 3 allows using WinForms when run on Windows but MSAL does not yet support this.
+            // On Windows we also support the WinForms & WebView2-based 'embedded' UI.
             //
-            // The system webview flow requires that the redirect URI is a loopback address, and that we are in an interactive session.
+            // On other platforms MSAL only supports the system webview flow (launch the user's browser) and the device
+            // code flow:
             //
-            // The device code flow has no limitations other than a way to communicate to the user the code required to authenticate.
+            //    - The system webview flow requires that the redirect URI is a loopback address, and that we are in an
+            //      interactive session.
+            //    - The device code flow has no limitations other than a way to communicate to the user the code
+            //      required to authenticate.
             //
             if (result is null)
             {
                 // If the user has disabled interaction all we can do is fail at this point
                 ThrowIfUserInteractionDisabled();
 
-                // Check for a user flow preference
-                MicrosoftAuthenticationFlowType flowType = GetFlowType();
                 switch (flowType)
                 {
                     case MicrosoftAuthenticationFlowType.Auto:
-                        if (CanUseEmbeddedWebView())
+                        if (CanUseOperatingSystemBroker())
+                            goto case MicrosoftAuthenticationFlowType.OperatingSystemBroker;
+
+                        if (CanUseEmbeddedWebView(app))
                             goto case MicrosoftAuthenticationFlowType.EmbeddedWebView;
 
                         if (CanUseSystemWebView(app, redirectUri))
@@ -96,12 +121,19 @@ namespace Microsoft.Git.CredentialManager.Authentication
                         // Fall back to device code flow
                         goto case MicrosoftAuthenticationFlowType.DeviceCode;
 
+                    case MicrosoftAuthenticationFlowType.OperatingSystemBroker:
+                        Context.Trace.WriteLine("Performing interactive auth with broker...");
+                        EnsureCanUseOperatingSystemBroker();
+                        result = await app.AcquireTokenInteractive(scopes).ExecuteAsync();
+                        break;
+
                     case MicrosoftAuthenticationFlowType.EmbeddedWebView:
                         Context.Trace.WriteLine("Performing interactive auth with embedded web view...");
-                        EnsureCanUseEmbeddedWebView();
+                        EnsureCanUseEmbeddedWebView(app);
                         result = await app.AcquireTokenInteractive(scopes)
                             .WithPrompt(Prompt.SelectAccount)
                             .WithUseEmbeddedWebView(true)
+                            .WithEmbeddedWebViewOptions(GetEmbeddedWebViewOptions(app))
                             .ExecuteAsync();
                         break;
 
@@ -143,6 +175,8 @@ namespace Microsoft.Git.CredentialManager.Authentication
                 {
                     case "auto":
                         return MicrosoftAuthenticationFlowType.Auto;
+                    case "broker":
+                        return MicrosoftAuthenticationFlowType.OperatingSystemBroker;
                     case "embedded":
                         return MicrosoftAuthenticationFlowType.EmbeddedWebView;
                     case "system":
@@ -179,7 +213,7 @@ namespace Microsoft.Git.CredentialManager.Authentication
             }
         }
 
-        private async Task<IPublicClientApplication> CreatePublicClientApplicationAsync(string authority, string clientId, Uri redirectUri)
+        private PublicClientApplicationBuilder CreateAppBuilder(string authority, string clientId, Uri redirectUri)
         {
             var httpFactoryAdaptor = new MsalHttpClientFactoryAdaptor(Context.HttpClientFactory);
 
@@ -197,12 +231,7 @@ namespace Microsoft.Git.CredentialManager.Authentication
                 appBuilder.WithLogging(OnMsalLogMessage, LogLevel.Verbose, enablePiiLogging, false);
             }
 
-            IPublicClientApplication app = appBuilder.Build();
-
-            // Register the application token cache
-            await RegisterTokenCacheAsync(app);
-
-            return app;
+            return appBuilder;
         }
 
         #endregion
@@ -221,14 +250,12 @@ namespace Microsoft.Git.CredentialManager.Authentication
                 return;
             }
 
-            string clientId = app.AppConfig.ClientId;
-
             // We use the MSAL extension library to provide us consistent cache file access semantics (synchronisation, etc)
             // as other Microsoft developer tools such as the Azure PowerShell CLI.
             MsalCacheHelper helper = null;
             try
             {
-                var storageProps = CreateTokenCacheProps(clientId, useLinuxFallback: false);
+                var storageProps = CreateTokenCacheProps(useLinuxFallback: false);
                 helper = await MsalCacheHelper.CreateAsync(storageProps);
 
                 // Test that cache access is working correctly
@@ -254,7 +281,7 @@ namespace Microsoft.Git.CredentialManager.Authentication
                     // On Linux the SecretService/keyring might not be available so we must fall-back to a plaintext file.
                     Context.Streams.Error.WriteLine("warning: using plain-text fallback token cache");
                     Context.Trace.WriteLine("Using fall-back plaintext token cache on Linux.");
-                    var storageProps = CreateTokenCacheProps(clientId, useLinuxFallback: true);
+                    var storageProps = CreateTokenCacheProps(useLinuxFallback: true);
                     helper = await MsalCacheHelper.CreateAsync(storageProps);
                 }
             }
@@ -271,7 +298,7 @@ namespace Microsoft.Git.CredentialManager.Authentication
             }
         }
 
-        private StorageCreationProperties CreateTokenCacheProps(string clientId, bool useLinuxFallback)
+        private StorageCreationProperties CreateTokenCacheProps(bool useLinuxFallback)
         {
             const string cacheFileName = "msal.cache";
             string cacheDirectory;
@@ -290,7 +317,7 @@ namespace Microsoft.Git.CredentialManager.Authentication
             }
 
             // The keychain is used on macOS with the following service & account names
-            var builder = new StorageCreationPropertiesBuilder(cacheFileName, cacheDirectory, clientId)
+            var builder = new StorageCreationPropertiesBuilder(cacheFileName, cacheDirectory)
                 .WithMacKeyChain("Microsoft.Developer.IdentityService", "MSALCache");
 
             if (useLinuxFallback)
@@ -309,6 +336,23 @@ namespace Microsoft.Git.CredentialManager.Authentication
             return builder.Build();
         }
 
+        private EmbeddedWebViewOptions GetEmbeddedWebViewOptions(IPublicClientApplication app)
+        {
+            string runtimePath = null;
+            
+            // If MSAL can locate the WebView2 evergreen runtime then we don't have to use
+            // our potentially outdated bundled instance.  
+            if (!app.IsEmbeddedWebViewAvailable() && !TryGetWebView2Runtime(out runtimePath))
+            {
+                throw new InvalidOperationException("Unable to locate WebView2 runtime");
+            }
+
+            return new EmbeddedWebViewOptions
+            {
+                Title = "Git Credential Manager",
+                WebView2BrowserExecutableFolder = runtimePath
+            };
+        }
 
         private static SystemWebViewOptions GetSystemWebViewOptions()
         {
@@ -326,6 +370,14 @@ namespace Microsoft.Git.CredentialManager.Authentication
         private void OnMsalLogMessage(LogLevel level, string message, bool containspii)
         {
             Context.Trace.WriteLine($"[{level.ToString()}] {message}", memberName: "MSAL");
+        }
+
+        private bool TryGetWebView2Runtime(out string path)
+        {
+            // TODO: resolve this
+            // TODO: include the runtime
+            path = @"C:\Users\mattche\webview2";
+            return true;
         }
 
         private class MsalHttpClientFactoryAdaptor : IMsalHttpClientFactory
@@ -352,25 +404,36 @@ namespace Microsoft.Git.CredentialManager.Authentication
 
         #region Auth flow capability detection
 
-        private bool CanUseEmbeddedWebView()
+        private bool CanUseEmbeddedWebView(IPublicClientApplication app)
         {
-            // If we're in an interactive session and on .NET Framework then MSAL can show the WinForms-based embedded UI
-#if NETFRAMEWORK
-            return Context.SessionManager.IsDesktopSession;
+#if WINDOWS
+            // If we're on Windows and in an interactive session then MSAL can show the WebView2-based embedded UI
+            return PlatformUtils.IsWindows() && Context.SessionManager.IsDesktopSession && 
+                   (app.IsEmbeddedWebViewAvailable() || TryGetWebView2Runtime(out _));
 #else
             return false;
 #endif
         }
 
-        private void EnsureCanUseEmbeddedWebView()
+        private void EnsureCanUseEmbeddedWebView(IPublicClientApplication app)
         {
-#if NETFRAMEWORK
+#if WINDOWS
+            if (!PlatformUtils.IsWindows())
+            {
+                throw new InvalidOperationException("Embedded web view is only available on Windows.");
+            }
+
             if (!Context.SessionManager.IsDesktopSession)
             {
                 throw new InvalidOperationException("Embedded web view is not available without a desktop session.");
             }
+
+            if (!app.IsEmbeddedWebViewAvailable() && !TryGetWebView2Runtime(out _))
+            {
+                throw new InvalidOperationException("Embedded web view requires the WebView2 runtime which was not found.");
+            }
 #else
-            throw new InvalidOperationException("Embedded web view is not available on .NET Core.");
+            throw new InvalidOperationException("Embedded web view is only available on when targeting at least net5.0-windows10.0.17763.0.");
 #endif
         }
 
@@ -395,6 +458,20 @@ namespace Microsoft.Git.CredentialManager.Authentication
             if (!redirectUri.IsLoopback)
             {
                 throw new InvalidOperationException("System web view is not available for this service configuration.");
+            }
+        }
+
+        private static bool CanUseOperatingSystemBroker()
+        {
+            // We only support the broker on Windows 10
+            return PlatformUtils.IsWindows10();
+        }
+
+        private static void EnsureCanUseOperatingSystemBroker()
+        {
+            if (!PlatformUtils.IsWindows10())
+            {
+                throw new InvalidOperationException("OS broker is only available in Windows 10.");
             }
         }
 

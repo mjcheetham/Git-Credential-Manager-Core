@@ -1,8 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
+  
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
-    <TargetFrameworks Condition="'$(OSPlatform)' == 'windows'">net5.0;net5.0-windows10.0.17763.0</TargetFrameworks>
+    <TargetFramework Condition="'$(OSPlatform)' == 'windows'">net5.0-windows10.0.17763.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <LangVersion>latest</LangVersion>
@@ -15,8 +15,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Microsoft.AzureRepos\Microsoft.AzureRepos.csproj" />
-    <ProjectReference Include="..\TestInfrastructure\TestInfrastructure.csproj" />
+    <ProjectReference Include="..\Microsoft.Authentication\Microsoft.Authentication.csproj" />
+    <ProjectReference Include="..\Microsoft.Git.CredentialManager.Tests\Microsoft.Git.CredentialManager.Tests.csproj" />
   </ItemGroup>
 
 </Project>

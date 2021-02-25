@@ -26,11 +26,7 @@ namespace Microsoft.Git.CredentialManager
         /// <returns>True if running on macOS, false otherwise.</returns>
         public static bool IsMacOS()
         {
-#if NETFRAMEWORK
-            return Environment.OSVersion.Platform == PlatformID.MacOSX;
-#elif NETSTANDARD
             return RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
-#endif
         }
 
         /// <summary>
@@ -39,11 +35,16 @@ namespace Microsoft.Git.CredentialManager
         /// <returns>True if running on Windows, false otherwise.</returns>
         public static bool IsWindows()
         {
-#if NETFRAMEWORK
-            return Environment.OSVersion.Platform == PlatformID.Win32NT;
-#elif NETSTANDARD
             return RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-#endif
+        }
+
+        /// <summary>
+        /// Check if the current Operating System is Windows 10 or newer.
+        /// </summary>
+        /// <returns>True if running on at least Windows 10, false otherwise.</returns>
+        public static bool IsWindows10()
+        {
+            return OperatingSystem.IsWindowsVersionAtLeast(10);
         }
 
         /// <summary>
@@ -52,11 +53,7 @@ namespace Microsoft.Git.CredentialManager
         /// <returns>True if running on a Linux distribution, false otherwise.</returns>
         public static bool IsLinux()
         {
-#if NETFRAMEWORK
-            return Environment.OSVersion.Platform == PlatformID.Unix;
-#elif NETSTANDARD
             return RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
-#endif
         }
 
         /// <summary>
@@ -140,9 +137,6 @@ namespace Microsoft.Git.CredentialManager
 
         private static string GetCpuArchitecture()
         {
-#if NETFRAMEWORK
-            return Environment.Is64BitOperatingSystem ? "x86-64" : "x86";
-#elif NETSTANDARD
             switch (RuntimeInformation.OSArchitecture)
             {
                 case Architecture.Arm:
@@ -156,16 +150,11 @@ namespace Microsoft.Git.CredentialManager
                 default:
                     return RuntimeInformation.OSArchitecture.ToString();
             }
-#endif
         }
 
         private static string GetClrVersion()
         {
-#if NETFRAMEWORK
-            return $".NET Framework {Environment.Version}";
-#elif NETSTANDARD
             return RuntimeInformation.FrameworkDescription;
-#endif
         }
 
         #endregion

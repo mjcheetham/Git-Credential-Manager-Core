@@ -103,12 +103,9 @@ Filename: "{app}\{#GcmExe}"; Parameters: "unconfigure {#GcmConfigureCmdArgs}"; F
 [Files]
 Source: "{#PayloadDir}\Atlassian.Bitbucket.dll";                       DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\Atlassian.Bitbucket.UI.exe";                    DestDir: "{app}"; Flags: ignoreversion
-Source: "{#PayloadDir}\Atlassian.Bitbucket.UI.exe.config";             DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\git-credential-manager-core.exe";               DestDir: "{app}"; Flags: ignoreversion
-Source: "{#PayloadDir}\git-credential-manager-core.exe.config";        DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\GitHub.dll";                                    DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\GitHub.UI.exe";                                 DestDir: "{app}"; Flags: ignoreversion
-Source: "{#PayloadDir}\GitHub.UI.exe.config";                          DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\Microsoft.AzureRepos.dll";                      DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\Microsoft.Git.CredentialManager.dll";           DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\Microsoft.Git.CredentialManager.UI.dll";        DestDir: "{app}"; Flags: ignoreversion
