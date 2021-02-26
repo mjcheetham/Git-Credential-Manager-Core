@@ -14,18 +14,6 @@ namespace GitHub.Tests
     public class GitHubHostProviderTests
     {
         [Theory]
-        [InlineData("https://github.com", true)]
-        [InlineData("https://gitHUB.CoM", true)]
-        [InlineData("https://GITHUB.COM", true)]
-        [InlineData("https://foogithub.com", false)]
-        [InlineData("https://api.github.com", false)]
-        public void GitHubHostProvider_IsGitHubDotCom(string input, bool expected)
-        {
-            Assert.Equal(expected, GitHubHostProvider.IsGitHubDotCom(new Uri(input)));
-        }
-
-
-        [Theory]
         // We report that we support unencrypted HTTP here so that we can fail and
         // show a helpful error message in the call to `GenerateCredentialAsync` instead.
         [InlineData("http", "github.com", true)]

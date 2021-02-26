@@ -16,6 +16,7 @@ namespace Microsoft.AzureRepos
     {
         Task<string> GetAuthorityAsync(Uri organizationUri);
         Task<string> CreatePersonalAccessTokenAsync(Uri organizationUri, string accessToken, IEnumerable<string> scopes);
+        Task<bool> IsValidToken(Uri organizationUri, string accessToken);
     }
 
     public class AzureDevOpsRestApi : IAzureDevOpsRestApi
@@ -151,6 +152,31 @@ namespace Microsoft.AzureRepos
             }
 
             throw new Exception("Failed to create PAT");
+        }
+
+        public async Task<bool> IsValidToken(Uri organizationUri, string accessToken)
+        {
+            const string validationUrl = "_apis/????";
+
+            EnsureArgument.AbsoluteUri(organizationUri, nameof(organizationUri));
+            if (!UriHelpers.IsAzureDevOpsHost(organizationUri.Host))
+            {
+                throw new ArgumentException($"Provided URI '{organizationUri}' is not a valid Azure DevOps hostname", nameof(organizationUri));
+            }
+            EnsureArgument.NotNull(accessToken, nameof(accessToken));
+
+            Uri requestUri = new Uri(organizationUri, validationUrl);
+
+            _context.Trace.WriteLine($"HTTP: POST {requestUri}");
+            using (HttpRequestMessage request = CreateRequestMessage(HttpMethod.Get, requestUri, null, accessToken))
+            using (HttpResponseMessage response = await HttpClient.SendAsync(request))
+            {
+                _context.Trace.WriteLine($"HTTP: Response {(int) response.StatusCode} [{response.StatusCode}]");
+
+                string responseText = await response.Content.ReadAsStringAsync();
+
+                return response.IsSuccessStatusCode;
+            }
         }
 
         #region Private Methods

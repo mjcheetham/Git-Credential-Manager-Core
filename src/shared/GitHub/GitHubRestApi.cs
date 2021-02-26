@@ -26,6 +26,8 @@ namespace GitHub
         Task<GitHubUserInfo> GetUserInfoAsync(Uri targetUri, string accessToken);
 
         Task<GitHubMetaInfo> GetMetaInfoAsync(Uri targetUri);
+
+        Task<GitHubRepositoryInfo> GetRepositoryInfo(Uri targetUri, string owner, string repo, string accessToken);
     }
 
     public class GitHubRestApi : IGitHubRestApi
@@ -130,6 +132,31 @@ namespace GitHub
             }
         }
 
+        public async Task<GitHubRepositoryInfo> GetRepositoryInfo(Uri targetUri, string owner, string repo, string accessToken)
+        {
+            Uri requestUri = GetApiRequestUri(targetUri, $"repos/{owner}/{repo}");
+
+            _context.Trace.WriteLine($"HTTP: GET {requestUri}");
+            using (var request = new HttpRequestMessage(HttpMethod.Get, requestUri))
+            {
+                if (!string.IsNullOrWhiteSpace(accessToken))
+                {
+                    request.AddBearerAuthenticationHeader(accessToken);
+                }
+
+                using (HttpResponseMessage response = await HttpClient.SendAsync(request))
+                {
+                    _context.Trace.WriteLine($"HTTP: Response {(int) response.StatusCode} [{response.StatusCode}]");
+
+                    response.EnsureSuccessStatusCode();
+
+                    string json = await response.Content.ReadAsStringAsync();
+
+                    return JsonConvert.DeserializeObject<GitHubRepositoryInfo>(json);
+                }
+            }
+        }
+
         #endregion
 
         #region Private Methods
@@ -204,9 +231,9 @@ namespace GitHub
             }
         }
 
-        private Uri GetApiRequestUri(Uri targetUri, string apiUrl)
+        private static Uri GetApiRequestUri(Uri targetUri, string apiUrl)
         {
-            if (GitHubHostProvider.IsGitHubDotCom(targetUri))
+            if (UriHelpers.IsGitHubDotCom(targetUri))
             {
                 return new Uri($"https://api.github.com/{apiUrl}");
             }
@@ -218,17 +245,17 @@ namespace GitHub
             }
         }
 
-        private HttpContent GetTokenJsonContent(Uri targetUri, IEnumerable<string> scopes)
+        private static HttpContent GetTokenJsonContent(Uri targetUri, IEnumerable<string> scopes)
         {
-            const string HttpJsonContentType = "application/x-www-form-urlencoded";
-            const string JsonContentFormat = @"{{ ""scopes"": {0}, ""note"": ""git: {1} on {2} at {3:dd-MMM-yyyy HH:mm}"" }}";
+            const string httpJsonContentType = "application/x-www-form-urlencoded";
+            const string jsonContentFormat = @"{{ ""scopes"": {0}, ""note"": ""git: {1} on {2} at {3:dd-MMM-yyyy HH:mm}"" }}";
 
             var quotedScopes = scopes.Select(x => $"\"{x}\"");
             string scopesJson = $"[{string.Join(", ", quotedScopes)}]";
 
-            string jsonContent = string.Format(JsonContentFormat, scopesJson, targetUri, Environment.MachineName, DateTime.Now);
+            string jsonContent = string.Format(jsonContentFormat, scopesJson, targetUri, Environment.MachineName, DateTime.Now);
 
-            return new StringContent(jsonContent, Encoding.UTF8, HttpJsonContentType);
+            return new StringContent(jsonContent, Encoding.UTF8, httpJsonContentType);
         }
 
         private HttpClient _httpClient;
@@ -274,6 +301,27 @@ namespace GitHub
 
         [JsonProperty("verifiable_password_authentication")]
         public bool VerifiablePasswordAuthentication { get; set; }
+    }
+
+    public class GitHubRepositoryInfo
+    {
+        [JsonProperty("private")]
+        public bool IsPrivate { get; set; }
+
+        [JsonProperty("permissions")]
+        public GitHubRepositoryInfoPermissions Permissions { get; set; }
+    }
+
+    public class GitHubRepositoryInfoPermissions
+    {
+        [JsonProperty("admin")]
+        public bool IsAdmin { get; set; }
+
+        [JsonProperty("push")]
+        public bool CanPush { get; set; }
+
+        [JsonProperty("pull")]
+        public bool CanPull { get; set; }
     }
 
     public static class GitHubRestApiExtensions

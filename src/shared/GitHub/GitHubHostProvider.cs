@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Git.CredentialManager;
@@ -68,30 +70,12 @@ namespace GitHub
                 return false;
             }
 
-            if (StringComparer.OrdinalIgnoreCase.Equals(hostName, GitHubConstants.GitHubBaseUrlHost) ||
-                StringComparer.OrdinalIgnoreCase.Equals(hostName, GitHubConstants.GistBaseUrlHost))
+            if (UriHelpers.IsGitHubDotCom(hostName))
             {
                 return true;
             }
 
-            string[] domains = hostName.Split(new char[] { '.' });
-
-            // github[.subdomain].domain.tld
-            if (domains.Length >= 3 &&
-                StringComparer.OrdinalIgnoreCase.Equals(domains[0], "github"))
-            {
-                return true;
-            }
-
-            // gist.github[.subdomain].domain.tld
-            if (domains.Length >= 4 &&
-                StringComparer.OrdinalIgnoreCase.Equals(domains[0], "gist") &&
-                StringComparer.OrdinalIgnoreCase.Equals(domains[1], "github"))
-            {
-                return true;
-            }
-
-            return false;
+            return UriHelpers.IsGitHubLike(hostName);
         }
 
         public override bool IsSupported(HttpResponseMessage response)
@@ -110,7 +94,7 @@ namespace GitHub
             var baseUri = new Uri(base.GetServiceName(input));
 
             // Normalise the URI
-            string url = NormalizeUri(baseUri).AbsoluteUri;
+            string url = UriHelpers.NormalizeUri(baseUri).AbsoluteUri;
 
             // Trim trailing slash
             return url.TrimEnd('/');
@@ -180,6 +164,16 @@ namespace GitHub
             // Resolve the GitHub user handle
             GitHubUserInfo userInfo = await _gitHubApi.GetUserInfoAsync(targetUri, result.AccessToken);
 
+            // Check specific repository permissions if we have the full URL
+            if (UriHelpers.TryGetRepositoryFromUrl(targetUri, out string owner, out string repo))
+            {
+                bool isValidPermissions = await IsValidRepoPermissionsAsync(targetUri, owner, repo, result.AccessToken);
+                if (!isValidPermissions)
+                {
+
+                }
+            }
+
             return new GitCredential(userInfo.Login, result.AccessToken);
         }
 
@@ -245,7 +239,7 @@ namespace GitHub
 
             // GitHub.com should use OAuth or manual PAT based authentication only, never basic auth as of 13th November 2020
             // https://developer.github.com/changes/2020-02-14-deprecating-oauth-auth-endpoint
-            if (IsGitHubDotCom(targetUri))
+            if (UriHelpers.IsGitHubDotCom(targetUri))
             {
                 Context.Trace.WriteLine($"{targetUri} is github.com - authentication schemes: '{GitHubConstants.DotComAuthenticationModes}'");
                 return GitHubConstants.DotComAuthenticationModes;
@@ -283,38 +277,54 @@ namespace GitHub
             }
         }
 
+        private async Task<bool> IsValidRepoPermissionsAsync(Uri targetUri, string owner, string repo, string accessToken)
+        {
+            GitHubRepositoryInfo repoInfo = null;
+            try
+            {
+                repoInfo = await _gitHubApi.GetRepositoryInfo(targetUri, owner, repo, accessToken);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+            }
+
+            Debug.Assert(repoInfo.Permissions != null);
+
+            if (!repoInfo.Permissions.IsAdmin)
+            {
+                if (!repoInfo.Permissions.CanPull && !repoInfo.Permissions.CanPush)
+                {
+                    // Not allowed to read or write this repo!
+                    Context.Streams.Error.WriteLine($"error: user @{userInfo.Login} cannot read or write this repository");
+                    return false;
+                }
+
+                if (!repoInfo.Permissions.CanPush)
+                {
+                    // Not allowed to write to this repo (but can read)!
+                    // Optimistically return true because we don't know what operation Git is trying to do!
+                    Context.Streams.Error.WriteLine($"warning: user @{userInfo.Login} cannot push to this repository");
+                    return true;
+                }
+
+                if (!repoInfo.Permissions.CanPull)
+                {
+                    // Not allowed to read to this repo (but can write)!
+                    // Optimistically return true because we don't know what operation Git is trying to do!
+                    Context.Streams.Error.WriteLine($"warning: user @{userInfo.Login} cannot fetch from this repository");
+                    return true;
+                }
+            }
+
+            // Can read and write (or is admin)
+            return true;
+        }
+
         protected override void ReleaseManagedResources()
         {
             _gitHubApi.Dispose();
             _gitHubAuth.Dispose();
             base.ReleaseManagedResources();
         }
-
-        #region Private Methods
-
-        internal static bool IsGitHubDotCom(Uri targetUri)
-        {
-            return StringComparer.OrdinalIgnoreCase.Equals(targetUri.Host, GitHubConstants.GitHubBaseUrlHost);
-        }
-
-        private static Uri NormalizeUri(Uri uri)
-        {
-            if (uri is null)
-            {
-                throw new ArgumentNullException(nameof(uri));
-            }
-
-            // Special case for gist.github.com which are git backed repositories under the hood.
-            // Credentials for these repositories are the same as the one stored with "github.com".
-            // Same for gist.github[.subdomain].domain.tld. The general form was already checked via IsSupported.
-            int firstDot = uri.DnsSafeHost.IndexOf(".");
-            if (firstDot > -1 && uri.DnsSafeHost.Substring(0, firstDot).Equals("gist", StringComparison.OrdinalIgnoreCase)) {
-                return new Uri("https://" + uri.DnsSafeHost.Substring(firstDot+1));
-            }
-
-            return uri;
-        }
-
-        #endregion
     }
 }
