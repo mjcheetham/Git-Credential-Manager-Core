@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Client.Extensions.Msal;
@@ -102,6 +101,9 @@ namespace Microsoft.Git.CredentialManager.Authentication
                         result = await app.AcquireTokenInteractive(scopes)
                             .WithPrompt(Prompt.SelectAccount)
                             .WithUseEmbeddedWebView(true)
+                            // The embedded webview requires the WebView2 runtime on .NET 5+
+                            // We bundle the runtime with GCM and must tell MSAL where it can be found
+                            .WithWebView2Options(GetWebView2Options())
                             .ExecuteAsync();
                         break;
 
@@ -128,6 +130,13 @@ namespace Microsoft.Git.CredentialManager.Authentication
             }
 
             return new MsalResult(result);
+        }
+
+        private WebView2Options GetWebView2Options()
+        {
+            // TODO: resolve the app directory to find the WebView2 runtime
+            const string webView2RuntimeDirectory = @"";
+            return new WebView2Options {RuntimePath = webView2RuntimeDirectory};
         }
 
         private MicrosoftAuthenticationFlowType GetFlowType()
@@ -344,24 +353,21 @@ namespace Microsoft.Git.CredentialManager.Authentication
 
         private bool CanUseEmbeddedWebView()
         {
-            // If we're in an interactive session and on .NET Framework then MSAL can show the WinForms-based embedded UI
-#if NETFRAMEWORK
-            return Context.SessionManager.IsDesktopSession;
-#else
-            return false;
-#endif
+            // If we're on Windows and in an interactive session then MSAL can show the WinForms-based embedded UI
+            return PlatformUtils.IsWindows() && Context.SessionManager.IsDesktopSession;
         }
 
         private void EnsureCanUseEmbeddedWebView()
         {
-#if NETFRAMEWORK
+            if (!PlatformUtils.IsWindows())
+            {
+                throw new InvalidOperationException("Embedded web view is only available on Windows.");
+            }
+
             if (!Context.SessionManager.IsDesktopSession)
             {
                 throw new InvalidOperationException("Embedded web view is not available without a desktop session.");
             }
-#else
-            throw new InvalidOperationException("Embedded web view is not available on .NET Core.");
-#endif
         }
 
         private bool CanUseSystemWebView(IPublicClientApplication app, Uri redirectUri)
