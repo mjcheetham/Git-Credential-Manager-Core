@@ -7,6 +7,7 @@ using System.CommandLine.Invocation;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Authentication;
 using Microsoft.Git.CredentialManager;
 using Microsoft.Git.CredentialManager.Authentication;
 using Microsoft.Git.CredentialManager.Commands;

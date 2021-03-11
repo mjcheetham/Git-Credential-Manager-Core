@@ -4,12 +4,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Microsoft.Git.CredentialManager;
+using Microsoft.Git.CredentialManager.Authentication;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Client.Extensions.Msal;
 
-namespace Microsoft.Git.CredentialManager.Authentication
+namespace Microsoft.Authentication
 {
     public interface IMicrosoftAuthentication
     {

@@ -109,6 +109,7 @@ Source: "{#PayloadDir}\git-credential-manager-core.exe.config";        DestDir: 
 Source: "{#PayloadDir}\GitHub.dll";                                    DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\GitHub.UI.exe";                                 DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\GitHub.UI.exe.config";                          DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}\Microsoft.Authentication.dll";                  DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\Microsoft.AzureRepos.dll";                      DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\Microsoft.Git.CredentialManager.dll";           DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\Microsoft.Git.CredentialManager.UI.dll";        DestDir: "{app}"; Flags: ignoreversion

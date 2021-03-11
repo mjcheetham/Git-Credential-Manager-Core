@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Microsoft.Authentication\Microsoft.Authentication.csproj" />
     <ProjectReference Include="..\Microsoft.Git.CredentialManager\Microsoft.Git.CredentialManager.csproj" />
   </ItemGroup>
 
