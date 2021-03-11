@@ -3,9 +3,9 @@
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
 
   <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
+    <TargetFramework>net5.0-windows10.0.17763.0</TargetFramework>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <PayloadPath>$(PlatformOutPath)Payload.Windows\bin\$(Configuration)\net472\win-x86</PayloadPath>
+    <PayloadPath>$(PlatformOutPath)Payload.Windows\bin\$(Configuration)\$(TargetFramework)\win-x86</PayloadPath>
     <EnableDefaultItems>false</EnableDefaultItems>
   </PropertyGroup>
 

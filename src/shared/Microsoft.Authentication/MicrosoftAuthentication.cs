@@ -66,13 +66,10 @@ namespace Microsoft.Authentication
             // If the user has expressed a preference in how the want to perform the interactive authentication flows then we respect that.
             // Otherwise, depending on the current platform and session type we try to show the most appropriate authentication interface:
             //
-            // On .NET Framework MSAL supports the WinForms based 'embedded' webview UI. For Windows + .NET Framework this is the
-            // best and natural experience.
+            // MSAL only supports the embedded webview UI on Windows + .NET Framework. This means the only interactive
+            // authentication flows we have are the system webview flow (launch the user's browser), and the device-code flow.
             //
-            // On other runtimes (e.g., .NET Core) MSAL only supports the system webview flow (launch the user's browser),
-            // and the device-code flows.
-            //
-            //     Note: .NET Core 3 allows using WinForms when run on Windows but MSAL does not yet support this.
+            //     Note: MSAL allows using a WebView2-based embedded runtime when run on Windows but we don't support this yet.
             //
             // The system webview flow requires that the redirect URI is a loopback address, and that we are in an interactive session.
             //
@@ -355,24 +352,12 @@ namespace Microsoft.Authentication
 
         private bool CanUseEmbeddedWebView()
         {
-            // If we're in an interactive session and on .NET Framework then MSAL can show the WinForms-based embedded UI
-#if NETFRAMEWORK
-            return Context.SessionManager.IsDesktopSession;
-#else
             return false;
-#endif
         }
 
         private void EnsureCanUseEmbeddedWebView()
         {
-#if NETFRAMEWORK
-            if (!Context.SessionManager.IsDesktopSession)
-            {
-                throw new InvalidOperationException("Embedded web view is not available without a desktop session.");
-            }
-#else
             throw new InvalidOperationException("Embedded web view is not available on .NET Core.");
-#endif
         }
 
         private bool CanUseSystemWebView(IPublicClientApplication app, Uri redirectUri)

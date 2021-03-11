@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
+    <TargetFramework>net5.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <RootNamespace>Microsoft.Git.CredentialManager.UI</RootNamespace>
     <AssemblyName>Microsoft.Git.CredentialManager.UI</AssemblyName>
@@ -9,10 +9,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\shared\Microsoft.Git.CredentialManager\Microsoft.Git.CredentialManager.csproj" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(OSPlatform)' != 'windows'">
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>

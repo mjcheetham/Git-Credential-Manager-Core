@@ -1,8 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0</TargetFrameworks>
-    <TargetFrameworks Condition="'$(OSPlatform)'=='windows'">netstandard2.0;net472</TargetFrameworks>
+    <TargetFramework>net5.0</TargetFramework>
     <AssemblyName>Microsoft.AzureRepos</AssemblyName>
     <RootNamespace>Microsoft.AzureRepos</RootNamespace>
     <IsTestProject>false</IsTestProject>
@@ -12,10 +11,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Microsoft.Authentication\Microsoft.Authentication.csproj" />
     <ProjectReference Include="..\Microsoft.Git.CredentialManager\Microsoft.Git.CredentialManager.csproj" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
-    <Reference Include="System.Net.Http" />
   </ItemGroup>
 
 </Project>
