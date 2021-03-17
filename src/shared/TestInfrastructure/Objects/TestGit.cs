@@ -9,6 +9,8 @@ namespace Microsoft.Git.CredentialManager.Tests.Objects
 {
     public class TestGit : IGit
     {
+        public GitVersion Version { get; set; } = new GitVersion(2, 30);
+
         public string CurrentRepository { get; set; }
 
         public IList<GitRemote> Remotes { get; set; } = new List<GitRemote>();
@@ -24,6 +26,8 @@ namespace Microsoft.Git.CredentialManager.Tests.Objects
         }
 
         #region IGit
+
+        GitVersion IGit.Version => Version;
 
         string IGit.GetCurrentRepository() => CurrentRepository;
 

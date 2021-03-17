@@ -3,13 +3,18 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Microsoft.Git.CredentialManager
 {
     public interface IGit
     {
+        /// <summary>
+        /// Get the version of Git.
+        /// </summary>
+        /// <returns>Git version.</returns>
+        GitVersion Version { get; }
+
         /// <summary>
         /// Return the path to the current repository, or null if this instance is not
         /// scoped to a Git repository.
@@ -38,6 +43,97 @@ namespace Microsoft.Git.CredentialManager
         Task<IDictionary<string, string>> InvokeHelperAsync(string args, IDictionary<string, string> standardInput);
     }
 
+    public sealed class GitVersion : IComparable<GitVersion>, IEquatable<GitVersion>
+    {
+        public static bool TryParse(string str, out GitVersion version)
+        {
+            version = null;
+            if (string.IsNullOrWhiteSpace(str)) return false;
+
+            string[] parts = str.Split('.');
+            if (parts.Length < 3) return false;
+
+            if (!int.TryParse(parts[0], out int major)) return false;
+            if (!int.TryParse(parts[1], out int minor)) return false;
+            if (!int.TryParse(parts[2], out int patch)) return false;
+
+            version = new GitVersion(major, minor, patch);
+            return true;
+        }
+
+        public GitVersion(int major, int minor, int patch = 0)
+        {
+            Major = major;
+            Minor = minor;
+            Patch = patch;
+        }
+
+        public int Major { get; }
+        public int Minor { get; }
+        public int Patch { get; }
+
+        public bool Equals(GitVersion other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return Major == other.Major && Minor == other.Minor && Patch == other.Patch;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return ReferenceEquals(this, obj) || obj is GitVersion other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                var hashCode = Major;
+                hashCode = (hashCode * 397) ^ Minor;
+                hashCode = (hashCode * 397) ^ Patch;
+                return hashCode;
+            }
+        }
+
+        public int CompareTo(GitVersion other)
+        {
+            if (ReferenceEquals(this, other)) return 0;
+            if (ReferenceEquals(null, other)) return 1;
+            var majorCmp = Major.CompareTo(other.Major);
+            if (majorCmp != 0) return majorCmp;
+            var minorCmp = Minor.CompareTo(other.Minor);
+            if (minorCmp != 0) return minorCmp;
+            return Patch.CompareTo(other.Patch);
+        }
+
+        public static bool operator <(GitVersion a, GitVersion b)
+        {
+            if (ReferenceEquals(a, b)) return true;
+            if (a is null || b is null) return false;
+            return a.CompareTo(b) < 0;
+        }
+
+        public static bool operator >(GitVersion a, GitVersion b)
+        {
+            if (ReferenceEquals(a, b)) return true;
+            if (a is null || b is null) return false;
+            return a.CompareTo(b) > 0;
+        }
+
+        public static bool operator ==(GitVersion a, GitVersion b)
+        {
+            if (ReferenceEquals(a, b)) return true;
+            if (a is null || b is null) return false;
+            return a.CompareTo(b) == 0;
+        }
+
+        public static bool operator >=(GitVersion a, GitVersion b) => !(a < b);
+
+        public static bool operator <=(GitVersion a, GitVersion b) => !(a > b);
+
+        public static bool operator !=(GitVersion a, GitVersion b) => !(a == b);
+    }
+
     public class GitRemote
     {
         public GitRemote(string name, string fetchUrl, string pushUrl)
@@ -58,6 +154,8 @@ namespace Microsoft.Git.CredentialManager
         private readonly string _gitPath;
         private readonly string _workingDirectory;
 
+        private GitVersion _version;
+
         public GitProcess(ITrace trace, string gitPath, string workingDirectory = null)
         {
             EnsureArgument.NotNull(trace, nameof(trace));
@@ -67,6 +165,8 @@ namespace Microsoft.Git.CredentialManager
             _gitPath = gitPath;
             _workingDirectory = workingDirectory;
         }
+
+        public GitVersion Version => _version ?? (_version = GetVersion());
 
         public IGitConfiguration GetConfiguration()
         {
@@ -201,6 +301,31 @@ namespace Microsoft.Git.CredentialManager
             }
 
             return resultDict;
+        }
+
+        private GitVersion GetVersion()
+        {
+            using (var git = CreateProcess("--version"))
+            {
+                git.Start();
+                string data = git.StandardOutput.ReadToEnd();
+                git.WaitForExit();
+
+                if (git.ExitCode != 0)
+                {
+                    _trace.WriteLine($"Failed to get Git version (exit={git.ExitCode})");
+                    throw CreateGitException(git, "Failed to get Git version");
+                }
+
+                string versionStr = data.TrimEnd();
+
+                if (!GitVersion.TryParse(versionStr, out var version))
+                {
+                    throw new Exception($"Failed to parse Git version: '{versionStr}'");
+                }
+
+                return version;
+            }
         }
 
         public static GitException CreateGitException(Process git, string message)
