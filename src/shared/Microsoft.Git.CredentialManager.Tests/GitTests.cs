@@ -15,7 +15,8 @@ namespace Microsoft.Git.CredentialManager.Tests
         {
             string gitPath = GetGitPath();
             var trace = new NullTrace();
-            var git = new GitProcess(trace, gitPath, Path.GetTempPath());
+            var fs = new TestFileSystem();
+            var git = new GitProcess(trace, fs, gitPath, Path.GetTempPath());
 
             string actual = git.GetCurrentRepository();
 
@@ -29,7 +30,8 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             string gitPath = GetGitPath();
             var trace = new NullTrace();
-            var git = new GitProcess(trace, gitPath, workDirPath);
+            var fs = new TestFileSystem();
+            var git = new GitProcess(trace, fs, gitPath, workDirPath);
 
             string actual = git.GetCurrentRepository();
 
@@ -41,7 +43,8 @@ namespace Microsoft.Git.CredentialManager.Tests
         {
             string gitPath = GetGitPath();
             var trace = new NullTrace();
-            var git = new GitProcess(trace, gitPath, Path.GetTempPath());
+            var fs = new TestFileSystem();
+            var git = new GitProcess(trace, fs, gitPath, Path.GetTempPath());
 
             GitRemote[] remotes = git.GetRemotes().ToArray();
 
@@ -55,7 +58,8 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             string gitPath = GetGitPath();
             var trace = new NullTrace();
-            var git = new GitProcess(trace, gitPath, workDirPath);
+            var fs = new TestFileSystem();
+            var git = new GitProcess(trace, fs, gitPath, workDirPath);
 
             GitRemote[] remotes = git.GetRemotes().ToArray();
 
@@ -72,8 +76,9 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             string gitPath = GetGitPath();
             var trace = new NullTrace();
+            var fs = new TestFileSystem();
 
-            var git = new GitProcess(trace, gitPath, workDirPath);
+            var git = new GitProcess(trace, fs, gitPath, workDirPath);
             GitRemote[] remotes = git.GetRemotes().ToArray();
 
             Assert.Single(remotes);
@@ -92,8 +97,9 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             string gitPath = GetGitPath();
             var trace = new NullTrace();
+            var fs = new TestFileSystem();
 
-            var git = new GitProcess(trace, gitPath, workDirPath);
+            var git = new GitProcess(trace, fs, gitPath, workDirPath);
             GitRemote[] remotes = git.GetRemotes().ToArray();
 
             Assert.Single(remotes);
@@ -114,8 +120,9 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             string gitPath = GetGitPath();
             var trace = new NullTrace();
+            var fs = new TestFileSystem();
 
-            var git = new GitProcess(trace, gitPath, workDirPath);
+            var git = new GitProcess(trace, fs, gitPath, workDirPath);
             GitRemote[] remotes = git.GetRemotes().ToArray();
 
             Assert.Single(remotes);
@@ -138,8 +145,9 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             string gitPath = GetGitPath();
             var trace = new NullTrace();
+            var fs = new TestFileSystem();
 
-            var git = new GitProcess(trace, gitPath, workDirPath);
+            var git = new GitProcess(trace, fs, gitPath, workDirPath);
             GitRemote[] remotes = git.GetRemotes().ToArray();
 
             Assert.Equal(3, remotes.Length);
@@ -161,8 +169,9 @@ namespace Microsoft.Git.CredentialManager.Tests
 
             string gitPath = GetGitPath();
             var trace = new NullTrace();
+            var fs = new TestFileSystem();
 
-            var git = new GitProcess(trace, gitPath, workDirPath);
+            var git = new GitProcess(trace, fs, gitPath, workDirPath);
             GitRemote[] remotes = git.GetRemotes().ToArray();
 
             Assert.Single(remotes);

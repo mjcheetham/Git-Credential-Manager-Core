@@ -151,17 +151,20 @@ namespace Microsoft.Git.CredentialManager
     public class GitProcess : IGit
     {
         private readonly ITrace _trace;
+        private readonly IFileSystem _fs;
         private readonly string _gitPath;
         private readonly string _workingDirectory;
 
         private GitVersion _version;
 
-        public GitProcess(ITrace trace, string gitPath, string workingDirectory = null)
+        public GitProcess(ITrace trace, IFileSystem fs, string gitPath, string workingDirectory = null)
         {
             EnsureArgument.NotNull(trace, nameof(trace));
+            EnsureArgument.NotNull(fs, nameof(fs));
             EnsureArgument.NotNullOrWhiteSpace(gitPath, nameof(gitPath));
 
             _trace = trace;
+            _fs = fs;
             _gitPath = gitPath;
             _workingDirectory = workingDirectory;
         }
@@ -170,7 +173,7 @@ namespace Microsoft.Git.CredentialManager
 
         public IGitConfiguration GetConfiguration()
         {
-            return new GitProcessConfiguration(_trace, this);
+            return new GitProcessConfiguration(_trace, _fs, this);
         }
 
         public string GetCurrentRepository()

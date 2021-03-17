@@ -98,6 +98,7 @@ namespace Microsoft.Git.CredentialManager
                 string gitPath    = GetGitPath(Environment, FileSystem);
                 Git               = new GitProcess(
                                             Trace,
+                                            FileSystem,
                                             gitPath,
                                             FileSystem.GetCurrentDirectory()
                                         );
@@ -114,6 +115,7 @@ namespace Microsoft.Git.CredentialManager
                 string gitPath    = GetGitPath(Environment, FileSystem);
                 Git               = new GitProcess(
                                             Trace,
+                                            FileSystem,
                                             gitPath,
                                             FileSystem.GetCurrentDirectory()
                                         );
@@ -131,6 +133,7 @@ namespace Microsoft.Git.CredentialManager
                 string gitPath    = GetGitPath(Environment, FileSystem);
                 Git               = new GitProcess(
                                             Trace,
+                                            FileSystem,
                                             gitPath,
                                             FileSystem.GetCurrentDirectory()
                                         );

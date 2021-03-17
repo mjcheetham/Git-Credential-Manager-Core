@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 
 namespace Microsoft.Git.CredentialManager
@@ -103,21 +104,52 @@ namespace Microsoft.Git.CredentialManager
     public class GitProcessConfiguration : IGitConfiguration
     {
         private readonly ITrace _trace;
+        private readonly IFileSystem _fs;
         private readonly GitProcess _git;
 
-        internal GitProcessConfiguration(ITrace trace, GitProcess git)
+        internal GitProcessConfiguration(ITrace trace, IFileSystem fs, GitProcess git)
         {
             EnsureArgument.NotNull(trace, nameof(trace));
+            EnsureArgument.NotNull(fs, nameof(fs));
             EnsureArgument.NotNull(git, nameof(git));
 
             _trace = trace;
+            _fs = fs;
             _git = git;
         }
 
         public void Enumerate(GitConfigurationLevel level, GitConfigurationEnumerationCallback cb)
         {
             string levelArg = GetLevelFilterArg(level);
-            using (Process git = _git.CreateProcess($"config --null {levelArg} --list --show-scope"))
+
+            bool useShowScope = _git.Version >= new GitVersion(2, 26);
+            string scopeArg = !useShowScope ? "--show-origin" : "--show-scope";
+            string globalConfigPath = Path.Combine(_fs.UserHomePath, ".gitconfig");
+
+            GitConfigurationLevel ParseConfigScope(string str)
+            {
+                if (useShowScope)
+                {
+                    switch (str)
+                    {
+                        case "system":
+                            return GitConfigurationLevel.System;
+                        case "global":
+                            return GitConfigurationLevel.Global;
+                        case "local":
+                            return GitConfigurationLevel.Local;
+                        default:
+                            return GitConfigurationLevel.Unknown;
+                    }
+                }
+
+                if (str.EndsWith("etc/gitconfig")) return GitConfigurationLevel.System;
+                if (_fs.IsSamePath(globalConfigPath, str)) return GitConfigurationLevel.Global;
+                if (str.EndsWith(".git/config")) return GitConfigurationLevel.Local;
+                return GitConfigurationLevel.Unknown;
+            }
+
+            using (Process git = _git.CreateProcess($"config --null {levelArg} --list {scopeArg}"))
             {
                 git.Start();
                 // To avoid deadlocks, always read the output stream first and then wait
@@ -189,22 +221,7 @@ namespace Microsoft.Git.CredentialManager
                     // Skip the null terminator
                     i++;
 
-                    GitConfigurationLevel entryLevel;
-                    switch (scope.ToString())
-                    {
-                        case "system":
-                            entryLevel = GitConfigurationLevel.System;
-                            break;
-                        case "global":
-                            entryLevel = GitConfigurationLevel.Global;
-                            break;
-                        case "local":
-                            entryLevel = GitConfigurationLevel.Local;
-                            break;
-                        default:
-                            entryLevel = GitConfigurationLevel.Unknown;
-                            break;
-                    }
+                    GitConfigurationLevel entryLevel = ParseConfigScope(scope.ToString());
 
                     var entry = new GitConfigurationEntry(entryLevel, name.ToString(), value.ToString());
 
